@@ -1,0 +1,2891 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SyeLabs - Strategic Roadmap & Operations Hub</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cream: '#F2E8D9',
+                        syewhite: '#F7F1E8',
+                        sand: '#E0C9AA',
+                        sand1: '#E8D4BC',
+                        terracotta: '#C1714F',
+                        rust: '#98573b',
+                        brown: '#3B1F10',
+                        deep: '#1a0a04',
+                        deeprust: '#5C2A14',
+                        midterra: '#A85A38',
+                        terrasand: '#B86A46',
+                        claysand: '#CFA07E',
+                        warmsand: '#DCC2A8',
+                    },
+                    fontFamily: {
+                        urbanist: ['Urbanist', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font: Urbanist -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- Babel Standalone for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        :root {
+            --cream:      #F2E8D9;
+            --white:      #F7F1E8;
+            --sand:       #E0C9AA;
+            --sand1:      #E8D4BC;
+            --terracotta: #C1714F;
+            --rust:       #98573b;
+            --brown:      #3B1F10;
+            --deep:       #1a0a04;
+            --deep-rust:  #5C2A14;
+            --mid-terra:  #A85A38;
+            --terra-sand: #B86A46;
+            --clay-sand:  #CFA07E;
+            --warm-sand:  #DCC2A8;
+        }
+
+        body {
+            font-family: 'Urbanist', sans-serif;
+            background-color: var(--white);
+            color: var(--brown);
+        }
+
+        /* Custom SyeLabs Brand Title Style */
+        .syelabs-brand-heading {
+            font-family: 'Urbanist', sans-serif;
+            font-size: 35px;
+            font-weight: 700;
+            letter-spacing: 0.10em;
+            color: var(--brown);
+        }
+
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--sand1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--mid-terra);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--terracotta);
+        }
+
+        .glass-panel {
+            background: rgba(255, 251, 245, 0.92);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(193, 113, 79, 0.25);
+            box-shadow: 0 4px 20px -2px rgba(59, 31, 16, 0.05);
+        }
+
+        .glass-panel-subtle {
+            background: rgba(242, 232, 217, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(193, 113, 79, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-[#F7F1E8] text-[#3B1F10] min-h-screen font-urbanist">
+    <div id="root"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        window.SyeLabsFB = {
+            db: null,
+            auth: null,
+            user: null,
+            appId: typeof __app_id !== 'undefined' ? __app_id : 'syelabs-master-hub',
+            init: async function(onReadyCallback) {
+                try {
+                    let firebaseConfig = {};
+                    if (typeof __firebase_config !== 'undefined') {
+                        firebaseConfig = JSON.parse(__firebase_config);
+                    } else {
+                        console.warn('Firebase config absent, running in local client storage mode.');
+                        if (onReadyCallback) onReadyCallback(null);
+                        return;
+                    }
+
+                    const app = initializeApp(firebaseConfig);
+                    const db = getFirestore(app);
+                    const auth = getAuth(app);
+                    
+                    window.SyeLabsFB.db = db;
+                    window.SyeLabsFB.auth = auth;
+
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    onAuthStateChanged(auth, (usr) => {
+                        window.SyeLabsFB.user = usr;
+                        if (usr && onReadyCallback) {
+                            onReadyCallback(usr);
+                        }
+                    });
+                } catch (e) {
+                    console.warn("Firebase init notice:", e.message || e);
+                    if (onReadyCallback) onReadyCallback(null);
+                }
+            }
+        };
+    </script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        // Default Team Owners list
+        const DEFAULT_TEAM_OWNERS = [
+            'Leadership',
+            'Operations',
+            'Marketing Lead',
+            'Grant Lead',
+            'Social Lead',
+            'Content Lead',
+            'Education Lead',
+            'Outreach Lead',
+            'PR Lead',
+            'HR / Mentorship',
+            'Strategy',
+            'Tech Lead'
+        ];
+
+        // Master Default Events
+        const SYELABS_EVENTS = [
+            {
+                id: 'evt-1',
+                title: 'Nonprofit Registration & EIN Filing',
+                date: '2026-09-05',
+                category: 'Legal & Org',
+                priority: 'High',
+                assignee: 'Leadership',
+                status: 'In Progress',
+                description: 'File state nonprofit entity status and secure Federal EIN number for SyeLabs.',
+                deliverable: 'Official State Registration & EIN Document'
+            },
+            {
+                id: 'evt-2',
+                title: 'Finalize Board Bylaws, Charter & FY26 Budget',
+                date: '2026-09-12',
+                category: 'Legal & Org',
+                priority: 'High',
+                assignee: 'Leadership, Operations',
+                status: 'To Do',
+                description: 'Define board position roles, bylaws, SyeLabs mission/vision charter, and complete organizational budget.',
+                deliverable: 'Signed SyeLabs Charter & Finance Budget'
+            },
+            {
+                id: 'evt-3',
+                title: 'Establish Weekly Advisor Calls & Financial Cadence',
+                date: '2026-09-15',
+                category: 'Scaling',
+                priority: 'Medium',
+                assignee: 'Operations',
+                status: 'To Do',
+                description: 'Set up weekly advisor call structure for outside perspectives, financial guidance, and nonprofit strategy.',
+                deliverable: 'Weekly Recurring Advisor Call Schedule'
+            },
+            {
+                id: 'evt-4',
+                title: 'State of Stack DC Conference (Sept 16-17)',
+                date: '2026-09-16',
+                category: 'Conferences',
+                priority: 'High',
+                assignee: 'Leadership, Marketing Lead',
+                status: 'To Do',
+                description: 'Attend State of Stack DC, conduct strategic networking, represent SyeLabs, and log partner leads.',
+                deliverable: 'Event Lead Log & Conference Debrief'
+            },
+            {
+                id: 'evt-5',
+                title: 'Identify 10 Target Conferences & CFP Deadlines',
+                date: '2026-09-22',
+                category: 'Conferences',
+                priority: 'High',
+                assignee: 'Marketing Lead',
+                status: 'To Do',
+                description: 'Identify 10 target tech conferences (KubeCon offshoots, WWC NYC, State of Stack DC, Habibi Tech) & submit CFP proposals.',
+                deliverable: 'Conference Tracker & Submitted Proposals'
+            },
+            {
+                id: 'evt-6',
+                title: 'Build Grant Calendar & Impact Materials Deck',
+                date: '2026-09-28',
+                category: 'Grants',
+                priority: 'High',
+                assignee: 'Grant Lead',
+                status: 'To Do',
+                description: 'Verify grant eligibility, compile reusable impact text ("What We Do"), and launch the master Grant Tracker.',
+                deliverable: 'Grant Application Master Calendar & Materials'
+            },
+            {
+                id: 'evt-7',
+                title: 'Social Media Launch (YT, TikTok, IG, LinkedIn)',
+                date: '2026-10-01',
+                category: 'Marketing',
+                priority: 'Medium',
+                assignee: 'Social Lead',
+                status: 'To Do',
+                description: 'Establish active SyeLabs brand profiles, assign active content owner, and launch social calendar.',
+                deliverable: 'Live Brand Profiles & Initial Content Rollout'
+            },
+            {
+                id: 'evt-8',
+                title: 'Women Who Code NYC Workshop & Panel',
+                date: '2026-10-05',
+                category: 'Conferences',
+                priority: 'High',
+                assignee: 'Content Lead, Education Lead',
+                status: 'To Do',
+                description: 'Host interactive SyeLabs workshop and feature as reputable panelists at Women Who Code NYC.',
+                deliverable: 'Workshop Slides & Participant Roster'
+            },
+            {
+                id: 'evt-9',
+                title: 'HomeLab Curriculum Build ("It\'s all Connected")',
+                date: '2026-10-18',
+                category: 'Content',
+                priority: 'High',
+                assignee: 'Education Lead',
+                status: 'To Do',
+                description: 'Develop HomeLab workshop curriculum covering Virtualization, ISOs, and systems connectivity.',
+                deliverable: 'HomeLab Student Guidebook & Resources'
+            },
+            {
+                id: 'evt-10',
+                title: 'Outreach to Top 10 Partners (OppNet, High Schools)',
+                date: '2026-11-04',
+                category: 'Partnerships',
+                priority: 'High',
+                assignee: 'Outreach Lead',
+                status: 'To Do',
+                description: 'Filter top 10 from 25 potential partners (OppNet, high schools, non-profits) and deliver outreach proposals.',
+                deliverable: '10 Customized Proposals Sent'
+            },
+            {
+                id: 'evt-11',
+                title: 'Intern Onboarding Framework & University Recruitment',
+                date: '2026-11-20',
+                category: 'Scaling',
+                priority: 'Medium',
+                assignee: 'HR / Mentorship',
+                status: 'To Do',
+                description: 'Establish intern onboarding playbooks, assign role structures, and connect with university talent networks.',
+                deliverable: 'Intern Onboarding Packet & University Pitch'
+            },
+            {
+                id: 'evt-12',
+                title: 'Merchandise & Swag Order (Caps & Giveaways)',
+                date: '2026-12-05',
+                category: 'Marketing',
+                priority: 'Low',
+                assignee: 'Marketing Lead',
+                status: 'To Do',
+                description: 'Finalize budget approval for SyeLabs caps, merchandise, and event giveaways for upcoming workshops.',
+                deliverable: 'Approved Merch Order & Delivery Schedule'
+            },
+            {
+                id: 'evt-13',
+                title: 'Weekly Grant Submission Drive',
+                date: '2026-12-18',
+                category: 'Grants',
+                priority: 'High',
+                assignee: 'Grant Lead',
+                status: 'To Do',
+                description: 'Maintain recurring weekly grant submission goal and update application status in master ledger.',
+                deliverable: '4+ Submitted Grant Applications'
+            },
+            {
+                id: 'evt-14',
+                title: 'Podcast & Media Pitch Campaign (20 Podcasts)',
+                date: '2027-01-15',
+                category: 'Media',
+                priority: 'Medium',
+                assignee: 'PR Lead',
+                status: 'To Do',
+                description: 'Pitch SyeLabs founders and key talking points to 20 relevant tech/nonprofit podcast hosts.',
+                deliverable: '20 Pitches Delivered & Booking Tracker'
+            },
+            {
+                id: 'evt-15',
+                title: 'Non-Profit Co-Partnership Agreement',
+                date: '2027-02-10',
+                category: 'Scaling',
+                priority: 'High',
+                assignee: 'Leadership, Outreach Lead',
+                status: 'To Do',
+                description: 'Finalize official co-hosting or resource-sharing partnership with a strategic peer non-profit.',
+                deliverable: 'Signed Non-Profit Partnership MOU'
+            },
+            {
+                id: 'evt-16',
+                title: 'For-Profit Workshop Revenue Model Blueprint',
+                date: '2027-03-01',
+                category: 'Scaling',
+                priority: 'Medium',
+                assignee: 'Strategy',
+                status: 'To Do',
+                description: 'Design paid corporate/for-profit workshop offering to build long-term earned revenue for SyeLabs.',
+                deliverable: 'Paid Workshop Pitch Deck & Pricing Matrix'
+            }
+        ];
+
+        const INITIAL_GRANTS = [
+            {
+                id: 'g-1',
+                organization: 'Google for Nonprofits / Tech Grant',
+                link: 'https://www.google.com/nonprofits/',
+                amount: 10000,
+                eligibility: 'Verified 501(c)(3) status or fiscal sponsor',
+                deadline: '2026-10-15',
+                status: 'In Progress',
+                date: '2026-08-20',
+                notes: 'Gathering 501c3 EIN paperwork and tax exemption certificate.',
+                initials: 'GL'
+            },
+            {
+                id: 'g-2',
+                organization: 'AWS Imagine Grant (Nonprofit Tech Innovation)',
+                link: 'https://aws.amazon.com/government-education/nonprofits/aws-imagine-grant/',
+                amount: 25000,
+                eligibility: 'US-based 501c3 tech inclusion focus',
+                deadline: '2026-11-01',
+                status: 'Drafting',
+                date: '2026-08-22',
+                notes: 'Drafting HomeLab architecture impact narrative.',
+                initials: 'SB'
+            },
+            {
+                id: 'g-3',
+                organization: 'Fast Forward Tech Nonprofit Accelerator',
+                link: 'https://www.ffwd.org/',
+                amount: 25000,
+                eligibility: 'Tech-focused nonprofits with scalable curriculum',
+                deadline: '2026-12-10',
+                status: 'Under Review',
+                date: '2026-08-15',
+                notes: 'Submitted initial application deck & video overview.',
+                initials: 'MW'
+            },
+            {
+                id: 'g-4',
+                organization: 'Mozilla Technology & Society Grant',
+                link: 'https://foundation.mozilla.org/grants/',
+                amount: 15000,
+                eligibility: 'Open source educational tech and hands-on labs',
+                deadline: '2026-09-30',
+                status: 'Submitted',
+                date: '2026-08-24',
+                notes: 'Focused on HomeLab open-source hardware kit deployment.',
+                initials: 'GL'
+            }
+        ];
+
+        const INITIAL_BUDGET = [
+            { id: 'b-1', item: 'Nonprofit Entity State & EIN Filing Fees', category: 'Legal & Org', amount: 450, status: 'Approved', notes: 'One-time registration expense' },
+            { id: 'b-2', item: 'Merchandise, Embroidered Caps & Swag Giveaways', category: 'Marketing', amount: 1200, status: 'Pending', notes: 'For WWC NYC and State of Stack DC' },
+            { id: 'b-3', item: 'HomeLab Hardware Equipment (Mini PCs, Switches, ISO Flash)', category: 'Programs', amount: 2800, status: 'Approved', notes: 'Curriculum lab deployment kits' },
+            { id: 'b-4', item: 'State of Stack DC & WWC NYC Travel & Booth Fees', category: 'Conferences', amount: 1500, status: 'Pending', notes: 'Conference registrations & promo materials' },
+            { id: 'b-5', item: 'Intern Stipend & Mentorship Program Fund', category: 'Scaling', amount: 3000, status: 'Planned', notes: 'FY26 Intern onboarding support' }
+        ];
+
+        const INITIAL_CURRICULUM = [
+            {
+                id: 'curr-1',
+                track: 'homelabs',
+                title: 'Virtualization & Hypervisors',
+                subtitle: 'Module 1',
+                description: 'Introduction to Proxmox VE, VirtualBox, and ESXi. Understanding bare-metal vs hosted hypervisors.',
+                outcome: 'Spin up first virtual machine from scratch.',
+                facilitator: 'Education Lead',
+                date: '2026-09-10'
+            },
+            {
+                id: 'curr-2',
+                track: 'homelabs',
+                title: 'ISOs, Boot Media & OS Deployment',
+                subtitle: 'Module 2',
+                description: 'Downloading checksum-verified Linux ISOs (Ubuntu Server, Debian), creating bootable media, and initial SSH configuration.',
+                outcome: 'Configure headless Linux instance with SSH key auth.',
+                facilitator: 'Tech Infrastructure Lead',
+                date: '2026-09-24'
+            },
+            {
+                id: 'curr-3',
+                track: 'homelabs',
+                title: 'Networking & Containerization',
+                subtitle: 'Module 3',
+                description: 'Internal bridge networks, DNS, Docker, Portainer, and connecting microservices cleanly together.',
+                outcome: 'Deploy Docker compose stack on HomeLab server.',
+                facilitator: 'Education Lead',
+                date: '2026-10-08'
+            },
+            {
+                id: 'curr-4',
+                track: 'conferences',
+                title: 'State of Stack DC (Sept 16-17)',
+                subtitle: 'Keynote & Networking',
+                description: 'Primary target for SyeLabs leadership networking, booth presence, and establishing strategic partnerships with public sector tech non-profits.',
+                outcome: 'Lead capture log & speaker session notes.',
+                facilitator: 'Leadership, Marketing Lead',
+                date: '2026-09-16'
+            },
+            {
+                id: 'curr-5',
+                track: 'conferences',
+                title: 'Women Who Code NYC Workshop',
+                subtitle: 'Technical Panel & Lab',
+                description: 'Co-hosting hands-on technical workshop and supplying reputable panelists representing SyeLabs mentorship mission.',
+                outcome: 'Co-branded slide deck & attendee roster.',
+                facilitator: 'Content Lead',
+                date: '2026-10-05'
+            },
+            {
+                id: 'curr-6',
+                track: 'mentorship',
+                title: '1-on-1 Fellow Mentorship Cohort',
+                subtitle: 'Mentorship Track A',
+                description: 'Matching technical mentors with high school & college students for monthly resume, portfolio, and code reviews.',
+                outcome: 'Active 1-on-1 mentor pairings & feedback logs.',
+                facilitator: 'HR / Mentorship',
+                date: '2026-09-15'
+            },
+            {
+                id: 'curr-7',
+                track: 'mentorship',
+                title: 'University Intern Onboarding Program',
+                subtitle: 'Internship Track B',
+                description: 'Structured onboarding packet, Github repo access, and clear deliverables for semester-long intern projects.',
+                outcome: 'Completed intern project repos and reviews.',
+                facilitator: 'Mentorship Lead',
+                date: '2026-10-01'
+            }
+        ];
+
+        const DEFAULT_GOVERNANCE = {
+            title: 'SyeLabs Alumni & Leadership Council Charter',
+            mission: 'The mission of SyeLabs Leadership Council is to maintain a strong, well-resourced technical network, facilitate hands-on technology workshops (HomeLabs, WWC NYC, State of Stack DC), and connect aspiring tech fellows with industry mentors and sustainable career pathways.',
+            pillars: [
+                { title: 'Career Awareness & Exposure', desc: 'Connecting students to emerging technology fields, cloud infrastructure, and technical leadership opportunities.' },
+                { title: 'HomeLabs & Technical Fluency', desc: 'Building practical hardware, ISO deployment, hypervisors, and open-source network curriculum ("It\'s All Connected").' },
+                { title: 'Mentorship & Social Capital', desc: 'Facilitating organic 1-on-1 relationships between industry leaders, alumni fellows, and university interns.' },
+                { title: 'Inclusion & Leadership Voice', desc: 'Representing diverse perspectives across technical workshops, conference panels, and organizational goals.' }
+            ],
+            roles: [
+                { title: 'Council Co-Chairs (2 Roles)', tag: 'Leadership', desc: 'Recruiting and onboarding incoming council members, facilitating biweekly meetings, coordinating with advisor network, and monitoring central SyeLabs communications.' },
+                { title: 'Career & Mentorship Catalyst', tag: 'Mentorship', desc: 'Designing initiatives to re-engage mid-career alumni, strengthening connections with Board of Directors, and building matrix-style career pipelines for fellows.' },
+                { title: 'Programming & Workshop Lead', tag: 'Events', desc: 'Organizing minimum 3 events/workshops per year (including WWC NYC & State of Stack DC), drafting project roadmaps, venue/tech logistics, and participant feedback.' },
+                { title: 'Treasurer & Financial Lead', tag: 'Finance', desc: 'Managing SyeLabs financial accounts, grant tracking ledger, merchandise budgeting (caps/giveaways), timesheet policies, and regular financial reporting.' }
+            ],
+            agreements: [
+                'Time Commitment: Dedicated 3–5 hours per month to council duties and deliverables.',
+                'Responsiveness: Acknowledge and respond to council communications within 24–48 hours.',
+                'Term Limits: 2-year limit per specific role; 4-year maximum total council membership to ensure fresh perspective.',
+                'Attendance Policy: Automatic review/dismissal after 3 consecutive unexcused meeting absences.'
+            ],
+            cadence: [
+                'Biweekly Syncs: 1.5-hour biweekly Zoom meetings with defined facilitator, timekeeper, and note taker.',
+                'Decision Voting: Internal council decisions determined by democratic majority vote.',
+                'Action Items: Summarized at meeting close and distributed within 24 hours with agenda setting for next call.'
+            ]
+        };
+
+        function SyeLabsApp() {
+            const [planId, setPlanId] = useState('syelabs-master-plan');
+            const [planTitle, setPlanTitle] = useState('SyeLabs Continuous Strategic Roadmap');
+            const [startDate, setStartDate] = useState(() => {
+                const today = new Date();
+                return today.toISOString().split('T')[0];
+            });
+            
+            // Core Navigation Tabs
+            const [mainTab, setMainTab] = useState('plan'); // 'plan', 'grants', 'governance', 'curriculum'
+            const [curriculumTrack, setCurriculumTrack] = useState('homelabs'); // 'homelabs', 'conferences', 'mentorship'
+
+            // Data States
+            const [events, setEvents] = useState(SYELABS_EVENTS);
+            const [grants, setGrants] = useState(INITIAL_GRANTS);
+            const [budgetItems, setBudgetItems] = useState(INITIAL_BUDGET);
+            const [curriculumItems, setCurriculumItems] = useState(INITIAL_CURRICULUM);
+            const [governance, setGovernance] = useState(DEFAULT_GOVERNANCE);
+            const [totalBudgetCap, setTotalBudgetCap] = useState(15000);
+            const [teamOwners, setTeamOwners] = useState(DEFAULT_TEAM_OWNERS);
+            
+            const [currentMonth, setCurrentMonth] = useState(new Date());
+            const [timelineBaseDate, setTimelineBaseDate] = useState(new Date('2026-09-01'));
+            const [activeView, setActiveView] = useState('timeline'); // 'timeline', 'calendar', 'list'
+            
+            // Modal states
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [editingEvent, setEditingEvent] = useState(null);
+            
+            const [isGrantModalOpen, setIsGrantModalOpen] = useState(false);
+            const [editingGrant, setEditingGrant] = useState(null);
+
+            const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
+            const [editingBudget, setEditingBudget] = useState(null);
+
+            const [isCurriculumModalOpen, setIsCurriculumModalOpen] = useState(false);
+            const [editingCurriculum, setEditingCurriculum] = useState(null);
+
+            const [isGovernanceModalOpen, setIsGovernanceModalOpen] = useState(false);
+            const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+            // Filters
+            const [filterSearch, setFilterSearch] = useState('');
+            const [filterAssignee, setFilterAssignee] = useState('All');
+            const [filterMonth, setFilterMonth] = useState('All');
+
+            // Sync and notification states
+            const [syncing, setSyncing] = useState(false);
+            const [fbUser, setFbUser] = useState(null);
+            const [toast, setToast] = useState(null);
+
+            const showToast = (msg, type = 'info') => {
+                setToast({ msg, type });
+                setTimeout(() => setToast(null), 3500);
+            };
+
+            useEffect(() => {
+                // Load from LocalStorage on initial mount
+                try {
+                    const local = localStorage.getItem(`syelabs_plan_${planId}`);
+                    if (local) {
+                        const data = JSON.parse(local);
+                        if (data.planTitle) setPlanTitle(data.planTitle);
+                        if (data.startDate) setStartDate(data.startDate);
+                        if (data.events) setEvents(data.events);
+                        if (data.grants) setGrants(data.grants);
+                        if (data.budgetItems) setBudgetItems(data.budgetItems);
+                        if (data.curriculumItems) setCurriculumItems(data.curriculumItems);
+                        if (data.governance) setGovernance(data.governance);
+                        if (data.totalBudgetCap !== undefined) setTotalBudgetCap(data.totalBudgetCap);
+                        if (data.teamOwners) setTeamOwners(data.teamOwners);
+                    }
+                } catch (e) {}
+
+                if (window.SyeLabsFB && window.SyeLabsFB.init) {
+                    window.SyeLabsFB.init((usr) => {
+                        setFbUser(usr);
+                        if (usr && window.SyeLabsFB.db) {
+                            subscribeToPlanData(planId);
+                        }
+                    });
+                }
+            }, [planId]);
+
+            const subscribeToPlanData = (pId) => {
+                const { db, appId } = window.SyeLabsFB;
+                if (!db) return;
+                
+                setSyncing(true);
+                import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then((fs) => {
+                    const docRef = fs.doc(db, 'artifacts', appId, 'public_data', `plan_${pId}`);
+                    
+                    const unsubscribe = fs.onSnapshot(docRef, (snap) => {
+                        setSyncing(false);
+                        if (snap.exists()) {
+                            const data = snap.data();
+                            if (data.planTitle) setPlanTitle(data.planTitle);
+                            if (data.startDate) setStartDate(data.startDate);
+                            if (data.events) setEvents(data.events);
+                            if (data.grants) setGrants(data.grants);
+                            if (data.budgetItems) setBudgetItems(data.budgetItems);
+                            if (data.curriculumItems) setCurriculumItems(data.curriculumItems);
+                            if (data.governance) setGovernance(data.governance);
+                            if (data.totalBudgetCap !== undefined) setTotalBudgetCap(data.totalBudgetCap);
+                            if (data.teamOwners) setTeamOwners(data.teamOwners);
+                            try { localStorage.setItem(`syelabs_plan_${pId}`, JSON.stringify(data)); } catch(e){}
+                        } else {
+                            fs.setDoc(docRef, {
+                                planTitle,
+                                startDate,
+                                events,
+                                grants,
+                                budgetItems,
+                                curriculumItems,
+                                governance,
+                                totalBudgetCap,
+                                teamOwners,
+                                updatedAt: new Date().toISOString()
+                            }).catch(err => console.warn("Firestore initial write notice:", err.message));
+                        }
+                    }, (err) => {
+                        console.warn("Firestore snapshot unavailable (running in Local Storage mode):", err.message);
+                        setSyncing(false);
+                    });
+
+                    return () => unsubscribe();
+                }).catch(err => setSyncing(false));
+            };
+
+            const savePlanToCloud = async (updatedEvents, updatedGrants, updatedBudget, updatedCurriculum, newTitle, newStartDate, newBudgetCap, newOwners, updatedGovernance) => {
+                const payload = {
+                    planTitle: newTitle !== undefined ? newTitle : planTitle,
+                    startDate: newStartDate !== undefined ? newStartDate : startDate,
+                    events: updatedEvents !== undefined ? updatedEvents : events,
+                    grants: updatedGrants !== undefined ? updatedGrants : grants,
+                    budgetItems: updatedBudget !== undefined ? updatedBudget : budgetItems,
+                    curriculumItems: updatedCurriculum !== undefined ? updatedCurriculum : curriculumItems,
+                    governance: updatedGovernance !== undefined ? updatedGovernance : governance,
+                    totalBudgetCap: newBudgetCap !== undefined ? newBudgetCap : totalBudgetCap,
+                    teamOwners: newOwners !== undefined ? newOwners : teamOwners,
+                    updatedAt: new Date().toISOString()
+                };
+
+                // Always persist locally
+                try {
+                    localStorage.setItem(`syelabs_plan_${planId}`, JSON.stringify(payload));
+                } catch (e) {}
+
+                const { db, appId, user } = window.SyeLabsFB;
+                if (!db || !user) return;
+
+                try {
+                    setSyncing(true);
+                    const fs = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    const docRef = fs.doc(db, 'artifacts', appId, 'public_data', `plan_${planId}`);
+                    await fs.setDoc(docRef, {
+                        ...payload,
+                        lastUpdatedBy: user.uid
+                    }, { merge: true });
+                } catch (e) {
+                    console.warn("Cloud save notice (saved locally instead):", e.message || e);
+                } finally {
+                    setSyncing(false);
+                }
+            };
+
+            const handleSaveGovernance = (newGov) => {
+                setGovernance(newGov);
+                savePlanToCloud(events, grants, budgetItems, curriculumItems, planTitle, startDate, totalBudgetCap, teamOwners, newGov);
+                showToast('Governance Charter updated!', 'success');
+                setIsGovernanceModalOpen(false);
+            };
+
+            const handleAddTeamOwner = (newOwner) => {
+                if (!newOwner || teamOwners.includes(newOwner)) return;
+                const updated = [...teamOwners, newOwner];
+                setTeamOwners(updated);
+                savePlanToCloud(events, grants, budgetItems, curriculumItems, planTitle, startDate, totalBudgetCap, updated);
+                showToast(`New team owner "${newOwner}" added!`, 'success');
+            };
+
+            // Calculate current 3 displayed months for timeline
+            const displayedTimelineMonths = useMemo(() => {
+                const months = [];
+                for (let i = 0; i < 3; i++) {
+                    const d = new Date(timelineBaseDate.getFullYear(), timelineBaseDate.getMonth() + i, 1);
+                    const yearMonthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                    const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                    months.push({ date: d, yearMonthStr, label });
+                }
+                return months;
+            }, [timelineBaseDate]);
+
+            // Filtered events
+            const filteredEvents = useMemo(() => {
+                return events.filter(evt => {
+                    const evtYearMonth = evt.date ? evt.date.substring(0, 7) : '';
+                    const matchSearch = evt.title.toLowerCase().includes(filterSearch.toLowerCase()) || 
+                                        (evt.description && evt.description.toLowerCase().includes(filterSearch.toLowerCase())) ||
+                                        (evt.category && evt.category.toLowerCase().includes(filterSearch.toLowerCase()));
+                    
+                    const evtAssignees = evt.assignee ? evt.assignee.split(',').map(a => a.trim()) : [];
+                    const matchAssignee = filterAssignee === 'All' || evtAssignees.includes(filterAssignee) || evt.assignee === filterAssignee;
+                    const matchMonth = filterMonth === 'All' || evtYearMonth === filterMonth;
+                    
+                    return matchSearch && matchAssignee && matchMonth;
+                });
+            }, [events, filterSearch, filterAssignee, filterMonth]);
+
+            const assigneesList = useMemo(() => {
+                const list = new Set(teamOwners);
+                events.forEach(e => {
+                    if (e.assignee) {
+                        e.assignee.split(',').forEach(a => list.add(a.trim()));
+                    }
+                });
+                return ['All', ...Array.from(list)];
+            }, [events, teamOwners]);
+
+            const availableMonthsList = useMemo(() => {
+                const set = new Set();
+                events.forEach(e => {
+                    if (e.date) set.add(e.date.substring(0, 7));
+                });
+                const arr = Array.from(set).sort();
+                return arr.map(ym => {
+                    const [y, m] = ym.split('-');
+                    const dateObj = new Date(Number(y), Number(m) - 1, 1);
+                    return {
+                        value: ym,
+                        label: dateObj.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                    };
+                });
+            }, [events]);
+
+            // Budget calculations
+            const totalCostsOverall = useMemo(() => {
+                return budgetItems.reduce((acc, b) => acc + (Number(b.amount) || 0), 0);
+            }, [budgetItems]);
+
+            const totalRemainingBudget = useMemo(() => {
+                return totalBudgetCap - totalCostsOverall;
+            }, [totalBudgetCap, totalCostsOverall]);
+
+            const handleSaveEvent = (eventData) => {
+                let updated;
+                if (editingEvent && editingEvent.id) {
+                    updated = events.map(e => e.id === editingEvent.id ? { ...editingEvent, ...eventData } : e);
+                    showToast('Milestone updated successfully!', 'success');
+                } else {
+                    const newEvt = { ...eventData, id: 'evt-' + Date.now() };
+                    updated = [...events, newEvt];
+                    showToast('New milestone added!', 'success');
+                }
+                setEvents(updated);
+                savePlanToCloud(updated, grants, budgetItems, curriculumItems, planTitle, startDate, totalBudgetCap, teamOwners);
+                setIsModalOpen(false);
+                setEditingEvent(null);
+            };
+
+            const handleDeleteEvent = (id) => {
+                const updated = events.filter(e => e.id !== id);
+                setEvents(updated);
+                savePlanToCloud(updated, grants, budgetItems, curriculumItems, planTitle, startDate, totalBudgetCap, teamOwners);
+                showToast('Milestone removed', 'info');
+                setIsModalOpen(false);
+                setEditingEvent(null);
+            };
+
+            const handleSaveGrant = (grantData) => {
+                let updated;
+                if (editingGrant && editingGrant.id) {
+                    updated = grants.map(g => g.id === editingGrant.id ? { ...editingGrant, ...grantData } : g);
+                    showToast('Grant updated successfully!', 'success');
+                } else {
+                    const newG = { ...grantData, id: 'g-' + Date.now() };
+                    updated = [...grants, newG];
+                    showToast('New grant tracked!', 'success');
+                }
+                setGrants(updated);
+                savePlanToCloud(events, updated, budgetItems, curriculumItems, planTitle, startDate, totalBudgetCap, teamOwners);
+                setIsGrantModalOpen(false);
+                setEditingGrant(null);
+            };
+
+            const handleDeleteGrant = (id) => {
+                const updated = grants.filter(g => g.id !== id);
+                setGrants(updated);
+                savePlanToCloud(events, updated, budgetItems, curriculumItems, planTitle, startDate, totalBudgetCap, teamOwners);
+                showToast('Grant removed', 'info');
+                setIsGrantModalOpen(false);
+                setEditingGrant(null);
+            };
+
+            const handleSaveBudget = (budgetData) => {
+                let updated;
+                if (editingBudget && editingBudget.id) {
+                    updated = budgetItems.map(b => b.id === editingBudget.id ? { ...editingBudget, ...budgetData } : b);
+                    showToast('Budget line item updated!', 'success');
+                } else {
+                    const newB = { ...budgetData, id: 'b-' + Date.now() };
+                    updated = [...budgetItems, newB];
+                    showToast('New budget item added!', 'success');
+                }
+                setBudgetItems(updated);
+                savePlanToCloud(events, grants, updated, curriculumItems, planTitle, startDate, totalBudgetCap, teamOwners);
+                setIsBudgetModalOpen(false);
+                setEditingBudget(null);
+            };
+
+            const handleDeleteBudget = (id) => {
+                const updated = budgetItems.filter(b => b.id !== id);
+                setBudgetItems(updated);
+                savePlanToCloud(events, grants, updated, curriculumItems, planTitle, startDate, totalBudgetCap, teamOwners);
+                showToast('Budget item removed', 'info');
+                setIsBudgetModalOpen(false);
+                setEditingBudget(null);
+            };
+
+            const handleSaveCurriculum = (curriculumData) => {
+                let updated;
+                if (editingCurriculum && editingCurriculum.id) {
+                    updated = curriculumItems.map(c => c.id === editingCurriculum.id ? { ...editingCurriculum, ...curriculumData } : c);
+                    showToast('Curriculum item updated!', 'success');
+                } else {
+                    const newC = { ...curriculumData, id: 'curr-' + Date.now() };
+                    updated = [...curriculumItems, newC];
+                    showToast('New curriculum item added!', 'success');
+                }
+                setCurriculumItems(updated);
+                savePlanToCloud(events, grants, budgetItems, updated, planTitle, startDate, totalBudgetCap, teamOwners);
+                setIsCurriculumModalOpen(false);
+                setEditingCurriculum(null);
+            };
+
+            const handleDeleteCurriculum = (id) => {
+                const updated = curriculumItems.filter(c => c.id !== id);
+                setCurriculumItems(updated);
+                savePlanToCloud(events, grants, budgetItems, updated, planTitle, startDate, totalBudgetCap, teamOwners);
+                showToast('Curriculum item removed', 'info');
+                setIsCurriculumModalOpen(false);
+                setEditingCurriculum(null);
+            };
+
+            const handleExportICS = () => {
+                let icsContent = [
+                    'BEGIN:VCALENDAR',
+                    'VERSION:2.0',
+                    'PRODID:-//SyeLabs//Roadmap Calendar//EN',
+                    'CALSCALE:GREGORIAN',
+                    'METHOD:PUBLISH'
+                ];
+
+                events.forEach(evt => {
+                    const dateClean = evt.date ? evt.date.replace(/-/g, '') : '';
+                    if (!dateClean) return;
+                    icsContent.push('BEGIN:VEVENT');
+                    icsContent.push(`UID:evt-${evt.id}@syelabs.com`);
+                    icsContent.push(`DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`);
+                    icsContent.push(`DTSTART;VALUE=DATE:${dateClean}`);
+                    icsContent.push(`SUMMARY:[SyeLabs] ${evt.title.replace(/,/g, '\\,')}`);
+                    icsContent.push(`DESCRIPTION:Category: ${evt.category} | Owners: ${evt.assignee || 'Unassigned'} | Deliverable: ${evt.deliverable || 'N/A'}`);
+                    icsContent.push('END:VEVENT');
+                });
+
+                icsContent.push('END:VCALENDAR');
+                const blob = new Blob([icsContent.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', 'syelabs-roadmap.ics');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showToast('Calendar exported (.ics file)!', 'success');
+            };
+
+            return (
+                <div class="min-h-screen pb-16">
+                    {/* Toast notification */}
+                    {toast && (
+                        <div class={`fixed bottom-5 right-5 z-50 px-5 py-3 rounded-xl text-xs font-bold shadow-2xl flex items-center space-x-2 transition-all ${
+                            toast.type === 'success' ? 'bg-[#C1714F] text-white' : 'bg-[#3B1F10] text-[#F7F1E8]'
+                        }`}>
+                            <i class={`fa-solid ${toast.type === 'success' ? 'fa-circle-check' : 'fa-circle-info'}`}></i>
+                            <span>{toast.msg}</span>
+                        </div>
+                    )}
+
+                    {/* Top Branding Bar */}
+                    <header class="bg-[#F2E8D9] border-b border-[#E0C9AA] sticky top-0 z-30 shadow-sm">
+                        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row items-center justify-between gap-4">
+                            
+                            {/* Brand Logo and Title */}
+                            <div class="flex items-center space-x-3">
+                                <div class="w-11 h-11 rounded-2xl bg-[#3B1F10] flex items-center justify-center p-1.5 shadow-md shrink-0 border border-[#C1714F]">
+                                    <img 
+                                        src="https://syelabs.com/wp-content/uploads/2023/11/cropped-SyeLabs-Logo-1.png" 
+                                        alt="SyeLabs Logo" 
+                                        class="w-full h-full object-contain"
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.style.display = 'none';
+                                            e.target.parentNode.innerHTML = '<i class="fa-solid fa-vial-virus text-[#F2E8D9] text-xl"></i>';
+                                        }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <h1 class="syelabs-brand-heading leading-tight">SYELABS</h1>
+                                    <p class="text-[11px] text-[#98573b] font-semibold tracking-wider uppercase">
+                                        Continuous Strategic Roadmap & Operations Hub
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Header Actions */}
+                            <div class="flex items-center space-x-2 sm:space-x-3">
+                                {syncing ? (
+                                    <span class="text-xs text-[#98573b] font-bold flex items-center gap-1 bg-[#E8D4BC] px-2.5 py-1 rounded-lg">
+                                        <i class="fa-solid fa-spinner fa-spin"></i> Syncing
+                                    </span>
+                                ) : (
+                                    <span class="text-xs text-[#5C2A14] font-bold flex items-center gap-1 bg-[#E8D4BC]/60 px-2.5 py-1 rounded-lg border border-[#CFA07E]/40" title="All edits saved locally and synced when connected">
+                                        <i class="fa-solid fa-hard-drive text-[#C1714F]"></i> Saved
+                                    </span>
+                                )}
+
+                                <button 
+                                    onClick={handleExportICS}
+                                    class="bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] text-xs font-bold px-3.5 py-2 rounded-xl border border-[#CFA07E] transition flex items-center gap-1.5"
+                                    title="Export Calendar to Google / Outlook"
+                                >
+                                    <i class="fa-solid fa-file-export text-[#C1714F]"></i> Export .ICS
+                                </button>
+
+                                <button 
+                                    onClick={() => setIsShareModalOpen(true)}
+                                    class="bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-md shadow-[#C1714F]/20"
+                                >
+                                    <i class="fa-solid fa-share-nodes"></i> Share Room
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Navigation Tabs Bar */}
+                        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center space-x-1 sm:space-x-2 overflow-x-auto py-2 border-t border-[#E0C9AA]/60">
+                            <button 
+                                onClick={() => setMainTab('plan')}
+                                class={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+                                    mainTab === 'plan' ? 'bg-[#3B1F10] text-[#F7F1E8] shadow' : 'text-[#5C2A14] hover:bg-[#E8D4BC]/60'
+                                }`}
+                            >
+                                <i class="fa-solid fa-calendar-days text-[#C1714F]"></i> Monthly Roadmap
+                            </button>
+
+                            <button 
+                                onClick={() => setMainTab('grants')}
+                                class={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+                                    mainTab === 'grants' ? 'bg-[#3B1F10] text-[#F7F1E8] shadow' : 'text-[#5C2A14] hover:bg-[#E8D4BC]/60'
+                                }`}
+                            >
+                                <i class="fa-solid fa-wallet text-[#C1714F]"></i> Budget & Grants Ledger
+                            </button>
+
+                            <button 
+                                onClick={() => setMainTab('governance')}
+                                class={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+                                    mainTab === 'governance' ? 'bg-[#3B1F10] text-[#F7F1E8] shadow' : 'text-[#5C2A14] hover:bg-[#E8D4BC]/60'
+                                }`}
+                            >
+                                <i class="fa-solid fa-landmark text-[#C1714F]"></i> Governance & Charter
+                            </button>
+
+                            <button 
+                                onClick={() => setMainTab('curriculum')}
+                                class={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+                                    mainTab === 'curriculum' ? 'bg-[#3B1F10] text-[#F7F1E8] shadow' : 'text-[#5C2A14] hover:bg-[#E8D4BC]/60'
+                                }`}
+                            >
+                                <i class="fa-solid fa-book-open text-[#C1714F]"></i> Curriculum Workshop
+                            </button>
+                        </div>
+                    </header>
+
+                    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+
+                        {}
+                        {mainTab === 'plan' && (
+                            <div class="space-y-6">
+                                {/* Title & Start Date Bar */}
+                                <div class="glass-panel p-5 sm:p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                                    <div>
+                                        <input 
+                                            type="text" 
+                                            value={planTitle} 
+                                            onChange={(e) => {
+                                                setPlanTitle(e.target.value);
+                                                savePlanToCloud(events, grants, budgetItems, curriculumItems, e.target.value, startDate, totalBudgetCap, teamOwners);
+                                            }}
+                                            class="text-xl sm:text-2xl font-extrabold text-[#3B1F10] bg-transparent border-b border-transparent hover:border-[#C1714F] focus:border-[#C1714F] focus:outline-none w-full"
+                                        />
+                                        <p class="text-xs text-[#5C2A14] font-semibold mt-1">
+                                            Multi-month strategic milestone planner built for long-term SyeLabs growth, advisors & mentors
+                                        </p>
+                                    </div>
+
+                                    <div class="flex items-center space-x-3 shrink-0">
+                                        <div class="text-right">
+                                            <label class="block text-[11px] font-extrabold text-[#5C2A14] uppercase">Plan Launch Date</label>
+                                            <input 
+                                                type="date" 
+                                                value={startDate} 
+                                                onChange={(e) => {
+                                                    setStartDate(e.target.value);
+                                                    savePlanToCloud(events, grants, budgetItems, curriculumItems, planTitle, e.target.value, totalBudgetCap, teamOwners);
+                                                }}
+                                                class="bg-white border border-[#CFA07E] text-[#3B1F10] text-xs font-bold rounded-xl px-3 py-1.5 focus:outline-none focus:border-[#C1714F] cursor-pointer shadow-sm"
+                                            />
+                                        </div>
+
+                                        <button 
+                                            onClick={() => {
+                                                setEditingEvent(null);
+                                                setIsModalOpen(true);
+                                            }}
+                                            class="bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-md"
+                                        >
+                                            <i class="fa-solid fa-plus"></i> Add Task / Milestone
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Filters, Timeline Month Nav, and View Switcher */}
+                                <div class="glass-panel p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                                    <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                                        {/* Search */}
+                                        <div class="relative flex-1 sm:flex-initial min-w-[180px]">
+                                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-[#98573b]"></i>
+                                            <input 
+                                                type="text" 
+                                                placeholder="Search milestones or tags..." 
+                                                value={filterSearch}
+                                                onChange={(e) => setFilterSearch(e.target.value)}
+                                                class="w-full bg-white border border-[#CFA07E] rounded-xl pl-8 pr-3 py-1.5 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                            />
+                                        </div>
+
+                                        {/* Assignee / Owner Filter */}
+                                        <select 
+                                            value={filterAssignee}
+                                            onChange={(e) => setFilterAssignee(e.target.value)}
+                                            class="bg-white border border-[#CFA07E] rounded-xl px-3 py-1.5 text-xs text-[#3B1F10] font-bold focus:outline-none"
+                                        >
+                                            {assigneesList.map(a => <option key={a} value={a}>Owner: {a}</option>)}
+                                        </select>
+
+                                        {/* Month Filter */}
+                                        <select 
+                                            value={filterMonth}
+                                            onChange={(e) => setFilterMonth(e.target.value)}
+                                            class="bg-white border border-[#CFA07E] rounded-xl px-3 py-1.5 text-xs text-[#3B1F10] font-bold focus:outline-none"
+                                        >
+                                            <option value="All">All Months</option>
+                                            {availableMonthsList.map(m => (
+                                                <option key={m.value} value={m.value}>{m.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* View Mode Buttons */}
+                                    <div class="flex items-center bg-[#E8D4BC] p-1 rounded-xl border border-[#CFA07E]">
+                                        <button 
+                                            onClick={() => setActiveView('timeline')}
+                                            class={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${activeView === 'timeline' ? 'bg-[#C1714F] text-white shadow' : 'text-[#5C2A14] hover:text-[#3B1F10]'}`}
+                                        >
+                                            <i class="fa-solid fa-table-columns"></i> Month Columns
+                                        </button>
+                                        <button 
+                                            onClick={() => setActiveView('calendar')}
+                                            class={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${activeView === 'calendar' ? 'bg-[#C1714F] text-white shadow' : 'text-[#5C2A14] hover:text-[#3B1F10]'}`}
+                                        >
+                                            <i class="fa-solid fa-calendar"></i> Month Grid
+                                        </button>
+                                        <button 
+                                            onClick={() => setActiveView('list')}
+                                            class={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${activeView === 'list' ? 'bg-[#C1714F] text-white shadow' : 'text-[#5C2A14] hover:text-[#3B1F10]'}`}
+                                        >
+                                            <i class="fa-solid fa-list-check"></i> List View
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {activeView === 'timeline' && (
+                                    <div class="space-y-4">
+                                        {/* Timeline Month Navigator Header */}
+                                        <div class="flex items-center justify-between bg-[#E8D4BC]/60 border border-[#CFA07E] px-4 py-2.5 rounded-xl">
+                                            <div class="flex items-center space-x-2">
+                                                <button 
+                                                    onClick={() => {
+                                                        const prev = new Date(timelineBaseDate.getFullYear(), timelineBaseDate.getMonth() - 3, 1);
+                                                        setTimelineBaseDate(prev);
+                                                    }}
+                                                    class="bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1"
+                                                >
+                                                    <i class="fa-solid fa-chevron-left"></i> Prev 3 Months
+                                                </button>
+                                                <span class="text-xs font-extrabold text-[#3B1F10] px-2">
+                                                    Showing {displayedTimelineMonths[0].label} – {displayedTimelineMonths[2].label}
+                                                </span>
+                                            </div>
+
+                                            <div class="flex items-center space-x-2">
+                                                <button 
+                                                    onClick={() => setTimelineBaseDate(new Date('2026-09-01'))}
+                                                    class="bg-[#E0C9AA] hover:bg-[#CFA07E] text-[#3B1F10] text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                                                >
+                                                    Reset to Launch
+                                                </button>
+                                                <button 
+                                                    onClick={() => {
+                                                        const next = new Date(timelineBaseDate.getFullYear(), timelineBaseDate.getMonth() + 3, 1);
+                                                        setTimelineBaseDate(next);
+                                                    }}
+                                                    class="bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1"
+                                                >
+                                                    Next 3 Months <i class="fa-solid fa-chevron-right"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* 3 Monthly Columns */}
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            {displayedTimelineMonths.map((mObj, idx) => {
+                                                const monthEvents = filteredEvents.filter(e => e.date && e.date.startsWith(mObj.yearMonthStr));
+                                                const columnColors = ['#C1714F', '#A85A38', '#B86A46'];
+                                                const themeColor = columnColors[idx % 3];
+
+                                                return (
+                                                    <div key={mObj.yearMonthStr} class="glass-panel rounded-2xl p-5 sm:p-6 flex flex-col min-h-[600px]">
+                                                        <div class="pb-3 mb-4 border-b border-[#CFA07E] flex items-center justify-between">
+                                                            <h3 class="font-extrabold text-base text-[#3B1F10] flex items-center gap-2">
+                                                                <span class="w-3 h-3 rounded-full" style={{ backgroundColor: themeColor }}></span>
+                                                                {mObj.label}
+                                                            </h3>
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="bg-[#E8D4BC] text-[#3B1F10] text-xs font-bold px-2 py-0.5 rounded-full">
+                                                                    {monthEvents.length} items
+                                                                </span>
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        const targetDate = `${mObj.yearMonthStr}-15`;
+                                                                        setEditingEvent({ date: targetDate });
+                                                                        setIsModalOpen(true);
+                                                                    }}
+                                                                    class="bg-[#C1714F] hover:bg-[#A85A38] text-white text-[11px] font-extrabold px-2.5 py-1 rounded-lg transition flex items-center gap-1 shadow-sm"
+                                                                    title={`Add new task to ${mObj.label}`}
+                                                                >
+                                                                    <i class="fa-solid fa-plus text-[10px]"></i> Add Task
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="space-y-4 flex-1 overflow-y-auto pr-1">
+                                                            {monthEvents.length === 0 ? (
+                                                                <div class="text-center py-12 text-xs text-[#5C2A14] font-medium italic border-2 border-dashed border-[#CFA07E]/60 rounded-2xl">
+                                                                    No milestones scheduled for {mObj.label}
+                                                                </div>
+                                                            ) : (
+                                                                monthEvents.map(evt => (
+                                                                    <div 
+                                                                        key={evt.id}
+                                                                        onClick={() => {
+                                                                            setEditingEvent(evt);
+                                                                            setIsModalOpen(true);
+                                                                        }}
+                                                                        class="bg-white/95 border border-[#CFA07E] hover:border-[#C1714F] rounded-xl p-4 shadow-sm hover:shadow-md transition cursor-pointer group"
+                                                                    >
+                                                                        <div class="flex items-center justify-between mb-2">
+                                                                            <span class="bg-[#E8D4BC] text-[#3B1F10] text-[10px] font-extrabold px-2 py-0.5 rounded border border-[#CFA07E]">
+                                                                                {evt.category}
+                                                                            </span>
+                                                                            <span class={`text-[10px] font-extrabold px-2 py-0.5 rounded ${
+                                                                                evt.status === 'Completed' ? 'bg-green-100 text-green-800' :
+                                                                                evt.status === 'In Progress' ? 'bg-amber-100 text-amber-800' : 'bg-[#E8D4BC] text-[#5C2A14]'
+                                                                            }`}>
+                                                                                {evt.status}
+                                                                            </span>
+                                                                        </div>
+
+                                                                        <h4 class="font-extrabold text-sm text-[#3B1F10] group-hover:text-[#C1714F] transition leading-snug">
+                                                                            {evt.title}
+                                                                        </h4>
+
+                                                                        {evt.description && (
+                                                                            <p class="text-xs text-[#5C2A14] mt-1.5 leading-relaxed font-medium">
+                                                                                {evt.description}
+                                                                            </p>
+                                                                        )}
+
+                                                                        {evt.deliverable && (
+                                                                            <div class="mt-2.5 bg-[#F2E8D9] border border-[#E0C9AA] p-2 rounded-lg text-[11px] text-[#3B1F10]">
+                                                                                <strong>Deliverable:</strong> {evt.deliverable}
+                                                                            </div>
+                                                                        )}
+
+                                                                        <div class="mt-3 pt-2.5 border-t border-[#E0C9AA]/60 flex items-center justify-between text-xs text-[#5C2A14]">
+                                                                            <span class="font-bold text-[#98573b]">
+                                                                                <i class="fa-regular fa-calendar mr-1"></i> {evt.date}
+                                                                            </span>
+                                                                            {evt.assignee && (
+                                                                                <div class="flex flex-wrap gap-1 justify-end max-w-[60%]">
+                                                                                    {evt.assignee.split(',').map((owner, idx) => (
+                                                                                        <span key={idx} class="bg-[#E8D4BC] text-[#3B1F10] font-extrabold px-2 py-0.5 rounded text-[10px] border border-[#CFA07E]">
+                                                                                            <i class="fa-solid fa-user-check mr-1 text-[9px] text-[#C1714F]"></i>{owner.trim()}
+                                                                                        </span>
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ))
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeView === 'calendar' && (
+                                    <div class="glass-panel rounded-2xl p-6">
+                                        {/* Month Controls */}
+                                        <div class="flex items-center justify-between mb-6 pb-4 border-b border-[#CFA07E]">
+                                            <h3 class="text-lg sm:text-xl font-extrabold text-[#3B1F10]">
+                                                {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                                            </h3>
+                                            <div class="flex items-center space-x-2">
+                                                <button 
+                                                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                                                    class="bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] p-2 rounded-xl transition text-xs font-bold"
+                                                >
+                                                    <i class="fa-solid fa-chevron-left"></i>
+                                                </button>
+                                                <button 
+                                                    onClick={() => setCurrentMonth(new Date())}
+                                                    class="bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] px-3 py-1.5 rounded-xl transition text-xs font-bold"
+                                                >
+                                                    Today
+                                                </button>
+                                                <button 
+                                                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                                                    class="bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] p-2 rounded-xl transition text-xs font-bold"
+                                                >
+                                                    <i class="fa-solid fa-chevron-right"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Day Headers */}
+                                        <div class="grid grid-cols-7 gap-2 text-center text-xs font-extrabold text-[#5C2A14] uppercase mb-2">
+                                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                                                <div key={d} class="py-1.5 bg-[#E8D4BC]/50 rounded-lg">{d}</div>
+                                            ))}
+                                        </div>
+
+                                        {/* Month Cells Grid */}
+                                        <div class="grid grid-cols-7 gap-2">
+                                            {(() => {
+                                                const year = currentMonth.getFullYear();
+                                                const month = currentMonth.getMonth();
+                                                const firstDay = new Date(year, month, 1).getDay();
+                                                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                                                
+                                                const cells = [];
+                                                for (let i = 0; i < firstDay; i++) {
+                                                    cells.push(<div key={`empty-${i}`} class="min-h-[150px] bg-white/30 rounded-xl"></div>);
+                                                }
+
+                                                for (let d = 1; d <= daysInMonth; d++) {
+                                                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                                                    const dayEvents = filteredEvents.filter(e => e.date === dateStr);
+                                                    const isToday = new Date().toISOString().split('T')[0] === dateStr;
+
+                                                    cells.push(
+                                                        <div 
+                                                            key={d} 
+                                                            onClick={() => {
+                                                                setEditingEvent({ date: dateStr });
+                                                                setIsModalOpen(true);
+                                                            }}
+                                                            class={`min-h-[150px] p-2 rounded-xl border transition flex flex-col justify-between cursor-pointer ${
+                                                                isToday ? 'bg-[#F2E8D9] border-[#C1714F] border-2 shadow-sm' : 'bg-white/90 border-[#E0C9AA] hover:border-[#C1714F]'
+                                                            }`}
+                                                        >
+                                                            <div class="flex items-center justify-between mb-1">
+                                                                <span class={`text-xs font-extrabold ${isToday ? 'text-[#C1714F]' : 'text-[#3B1F10]'}`}>{d}</span>
+                                                                {dayEvents.length > 0 && (
+                                                                    <span class="text-[10px] bg-[#C1714F] text-white font-bold px-1.5 py-0.2 rounded-full">
+                                                                        {dayEvents.length}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+
+                                                            <div class="space-y-1 overflow-y-auto max-h-[105px]">
+                                                                {dayEvents.map(evt => (
+                                                                    <div 
+                                                                        key={evt.id}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setEditingEvent(evt);
+                                                                            setIsModalOpen(true);
+                                                                        }}
+                                                                        class="bg-[#E8D4BC] hover:bg-[#C1714F] hover:text-white text-[#3B1F10] p-1.5 rounded text-[11px] font-bold leading-tight truncate transition"
+                                                                        title={`${evt.title} (${evt.assignee || 'Unassigned'})`}
+                                                                    >
+                                                                        {evt.title}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                                return cells;
+                                            })()}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeView === 'list' && (
+                                    <div class="glass-panel rounded-2xl p-6">
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-left text-xs sm:text-sm text-[#3B1F10]">
+                                                <thead class="text-xs text-[#5C2A14] uppercase bg-[#E8D4BC]/60 border-b border-[#CFA07E]">
+                                                    <tr>
+                                                        <th class="p-3">Target Date</th>
+                                                        <th class="p-3">Title & Overview</th>
+                                                        <th class="p-3">Category</th>
+                                                        <th class="p-3">Owners</th>
+                                                        <th class="p-3">Status</th>
+                                                        <th class="p-3">Deliverable</th>
+                                                        <th class="p-3 text-right">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-[#E0C9AA]">
+                                                    {filteredEvents.map(evt => (
+                                                        <tr key={evt.id} class="hover:bg-[#F2E8D9]/70 transition">
+                                                            <td class="p-3 font-extrabold text-[#C1714F] whitespace-nowrap">{evt.date}</td>
+                                                            <td class="p-3 max-w-xs">
+                                                                <div class="font-extrabold text-sm text-[#3B1F10]">{evt.title}</div>
+                                                                <div class="text-xs text-[#5C2A14]">{evt.description}</div>
+                                                            </td>
+                                                            <td class="p-3">
+                                                                <span class="bg-[#E8D4BC] text-[#3B1F10] font-bold px-2 py-0.5 rounded text-xs border border-[#CFA07E]">{evt.category}</span>
+                                                            </td>
+                                                            <td class="p-3">
+                                                                <div class="flex flex-wrap gap-1">
+                                                                    {evt.assignee ? evt.assignee.split(',').map((o, i) => (
+                                                                        <span key={i} class="bg-[#E8D4BC] text-[#3B1F10] font-bold px-2 py-0.5 rounded text-[11px] border border-[#CFA07E]">
+                                                                            {o.trim()}
+                                                                        </span>
+                                                                    )) : <span class="text-[#5C2A14]/50">Unassigned</span>}
+                                                                </div>
+                                                            </td>
+                                                            <td class="p-3">
+                                                                <span class={`px-2 py-0.5 rounded text-xs font-bold ${
+                                                                    evt.status === 'Completed' ? 'bg-green-100 text-green-800' :
+                                                                    evt.status === 'In Progress' ? 'bg-amber-100 text-amber-800' : 'bg-[#E8D4BC] text-[#5C2A14]'
+                                                                }`}>
+                                                                    {evt.status}
+                                                                </span>
+                                                            </td>
+                                                            <td class="p-3 text-xs text-[#5C2A14] font-medium max-w-xs">{evt.deliverable || '—'}</td>
+                                                            <td class="p-3 text-right">
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        setEditingEvent(evt);
+                                                                        setIsModalOpen(true);
+                                                                    }}
+                                                                    class="text-[#98573b] hover:text-[#3B1F10] p-1 transition"
+                                                                >
+                                                                    <i class="fa-solid fa-pen"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {}
+                        {mainTab === 'grants' && (
+                            <div class="space-y-6">
+                                {/* Grants Summary Cards */}
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                                    <div class="glass-panel p-5 rounded-2xl border-l-4 border-l-[#C1714F]">
+                                        <div class="text-xs font-bold text-[#5C2A14] uppercase tracking-wider mb-1">Total Grant Pipeline</div>
+                                        <div class="text-2xl font-extrabold text-[#3B1F10]">
+                                            ${grants.reduce((acc, g) => acc + (Number(g.amount) || 0), 0).toLocaleString()}
+                                        </div>
+                                        <p class="text-xs text-[#5C2A14] mt-1 font-medium">{grants.length} Total Applications Tracked</p>
+                                    </div>
+
+                                    <div class="glass-panel p-5 rounded-2xl border-l-4 border-l-[#A85A38]">
+                                        <div class="text-xs font-bold text-[#5C2A14] uppercase tracking-wider mb-1">Weekly Goal Status</div>
+                                        <div class="text-2xl font-extrabold text-[#3B1F10]">
+                                            {grants.filter(g => g.status === 'Submitted' || g.status === 'Under Review').length} Active
+                                        </div>
+                                        <p class="text-xs text-[#5C2A14] mt-1 font-medium">Recurring Application Cadence Active</p>
+                                    </div>
+
+                                    <div class="glass-panel p-5 rounded-2xl border-l-4 border-l-[#B86A46]">
+                                        <div class="text-xs font-bold text-[#5C2A14] uppercase tracking-wider mb-1">Total Costs Overall</div>
+                                        <div class="text-2xl font-extrabold text-[#3B1F10]">
+                                            ${totalCostsOverall.toLocaleString()}
+                                        </div>
+                                        <p class="text-xs text-[#5C2A14] mt-1 font-medium">{budgetItems.length} Operational Line Items</p>
+                                    </div>
+                                </div>
+
+                                {/* Grants Master Table */}
+                                <div class="glass-panel rounded-2xl p-6 sm:p-8">
+                                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#CFA07E]">
+                                        <div>
+                                            <h2 class="text-xl font-extrabold text-[#3B1F10] flex items-center gap-2">
+                                                <i class="fa-solid fa-file-signature text-[#C1714F]"></i> Master Grant Application Ledger
+                                            </h2>
+                                            <p class="text-xs text-[#5C2A14] font-medium">Track Organization/Grantor, Eligibility, Deadlines, and Initials</p>
+                                        </div>
+
+                                        <button 
+                                            onClick={() => {
+                                                setEditingGrant(null);
+                                                setIsGrantModalOpen(true);
+                                            }}
+                                            class="bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-md"
+                                        >
+                                            <i class="fa-solid fa-plus"></i> Add Grant Entry
+                                        </button>
+                                    </div>
+
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-left text-xs sm:text-sm text-[#3B1F10]">
+                                            <thead class="text-xs text-[#5C2A14] uppercase bg-[#E8D4BC]/60 border-b border-[#CFA07E]">
+                                                <tr>
+                                                    <th class="p-3">Organization / Grantor</th>
+                                                    <th class="p-3">Link</th>
+                                                    <th class="p-3">Amount</th>
+                                                    <th class="p-3">Eligibility</th>
+                                                    <th class="p-3">Deadline</th>
+                                                    <th class="p-3">Status</th>
+                                                    <th class="p-3">Date</th>
+                                                    <th class="p-3">Notes / Next Steps</th>
+                                                    <th class="p-3">Initials</th>
+                                                    <th class="p-3 text-right">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-[#E0C9AA]">
+                                                {grants.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan="10" class="text-center py-8 text-[#5C2A14] font-medium">
+                                                            No grant applications recorded yet. Click "Add Grant Entry" to start tracking!
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    grants.map(grant => (
+                                                        <tr key={grant.id} class="hover:bg-[#F2E8D9]/70 transition">
+                                                            <td class="p-3 font-extrabold text-sm text-[#3B1F10]">{grant.organization}</td>
+                                                            <td class="p-3">
+                                                                {grant.link ? (
+                                                                    <a href={grant.link} target="_blank" rel="noopener noreferrer" class="text-[#C1714F] hover:underline font-bold flex items-center gap-1">
+                                                                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Visit
+                                                                    </a>
+                                                                ) : <span class="text-[#5C2A14]/50">—</span>}
+                                                            </td>
+                                                            <td class="p-3 font-bold text-[#3B1F10]">${Number(grant.amount || 0).toLocaleString()}</td>
+                                                            <td class="p-3 text-xs text-[#5C2A14] max-w-xs">{grant.eligibility || 'N/A'}</td>
+                                                            <td class="p-3 font-bold text-[#98573b]">{grant.deadline || 'Rolling'}</td>
+                                                            <td class="p-3">
+                                                                <span class={`px-2.5 py-1 rounded-md text-xs font-bold ${
+                                                                    grant.status === 'Submitted' ? 'bg-green-100 text-green-800 border border-green-300' :
+                                                                    grant.status === 'Under Review' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
+                                                                    grant.status === 'In Progress' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                                                                    'bg-[#E8D4BC] text-[#5C2A14]'
+                                                                }`}>
+                                                                    {grant.status}
+                                                                </span>
+                                                            </td>
+                                                            <td class="p-3 text-xs text-[#5C2A14]">{grant.date}</td>
+                                                            <td class="p-3 text-xs text-[#5C2A14] max-w-xs leading-tight">{grant.notes || '—'}</td>
+                                                            <td class="p-3">
+                                                                <span class="bg-[#E8D4BC] text-[#3B1F10] font-bold px-2 py-1 rounded border border-[#CFA07E] text-xs">
+                                                                    {grant.initials || 'SL'}
+                                                                </span>
+                                                            </td>
+                                                            <td class="p-3 text-right">
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        setEditingGrant(grant);
+                                                                        setIsGrantModalOpen(true);
+                                                                    }}
+                                                                    class="text-[#98573b] hover:text-[#3B1F10] p-1 transition"
+                                                                >
+                                                                    <i class="fa-solid fa-pen"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {/* Budget Items Tracker */}
+                                <div class="glass-panel rounded-2xl p-6 sm:p-8">
+                                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#CFA07E]">
+                                        <div>
+                                            <h2 class="text-xl font-extrabold text-[#3B1F10] flex items-center gap-2">
+                                                <i class="fa-solid fa-wallet text-[#C1714F]"></i> Organizational Budget Line Items
+                                            </h2>
+                                            <p class="text-xs text-[#5C2A14] font-medium">Track caps, merchandise, travel, legal, and operational expenses</p>
+                                        </div>
+
+                                        <button 
+                                            onClick={() => {
+                                                setEditingBudget(null);
+                                                setIsBudgetModalOpen(true);
+                                            }}
+                                            class="bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] border border-[#CFA07E] text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-2"
+                                        >
+                                            <i class="fa-solid fa-plus text-[#C1714F]"></i> Add Budget Line Item
+                                        </button>
+                                    </div>
+
+                                    {/* Financial Summary Metrics Panel */}
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                                        <div class="bg-white/90 border border-[#CFA07E] p-4 rounded-xl shadow-sm flex flex-col justify-between">
+                                            <div class="flex items-center justify-between text-xs font-bold text-[#5C2A14] uppercase tracking-wider mb-1">
+                                                <span>Total in Budget</span>
+                                                <i class="fa-solid fa-piggy-bank text-[#C1714F]"></i>
+                                            </div>
+                                            <div class="flex items-center space-x-1 mt-1">
+                                                <span class="text-lg font-extrabold text-[#3B1F10]">$</span>
+                                                <input 
+                                                    type="number"
+                                                    value={totalBudgetCap}
+                                                    onChange={(e) => {
+                                                        const val = Number(e.target.value) || 0;
+                                                        setTotalBudgetCap(val);
+                                                        savePlanToCloud(events, grants, budgetItems, curriculumItems, planTitle, startDate, val, teamOwners);
+                                                    }}
+                                                    class="text-xl font-extrabold text-[#3B1F10] bg-transparent border-b border-[#C1714F]/40 hover:border-[#C1714F] focus:border-[#C1714F] focus:outline-none w-full"
+                                                    title="Click to edit total budget ceiling"
+                                                />
+                                            </div>
+                                            <div class="text-[11px] text-[#5C2A14] mt-1 font-semibold">
+                                                Editable FY26 Budget Ceiling
+                                            </div>
+                                        </div>
+
+                                        <div class="bg-white/90 border border-[#CFA07E] p-4 rounded-xl shadow-sm flex flex-col justify-between">
+                                            <div class="flex items-center justify-between text-xs font-bold text-[#5C2A14] uppercase tracking-wider mb-1">
+                                                <span>Total Costs Overall</span>
+                                                <i class="fa-solid fa-receipt text-[#98573b]"></i>
+                                            </div>
+                                            <div class="text-2xl font-extrabold text-[#98573b] mt-1">
+                                                ${totalCostsOverall.toLocaleString()}
+                                            </div>
+                                            <div class="text-[11px] text-[#5C2A14] mt-1 font-semibold">
+                                                Sum of {budgetItems.length} line items
+                                            </div>
+                                        </div>
+
+                                        <div class={`bg-white/90 border p-4 rounded-xl shadow-sm flex flex-col justify-between ${
+                                            totalRemainingBudget >= 0 ? 'border-green-300' : 'border-red-300'
+                                        }`}>
+                                            <div class="flex items-center justify-between text-xs font-bold text-[#5C2A14] uppercase tracking-wider mb-1">
+                                                <span>Total Remaining</span>
+                                                <i class={`fa-solid ${totalRemainingBudget >= 0 ? 'fa-circle-check text-green-600' : 'fa-circle-exclamation text-red-600'}`}></i>
+                                            </div>
+                                            <div class={`text-2xl font-extrabold mt-1 ${
+                                                totalRemainingBudget >= 0 ? 'text-green-700' : 'text-red-700'
+                                            }`}>
+                                                ${totalRemainingBudget.toLocaleString()}
+                                            </div>
+                                            <div class="text-[11px] text-[#5C2A14] mt-1 font-semibold">
+                                                {totalRemainingBudget >= 0 ? 'Available for allocation' : 'Over budget limit'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {budgetItems.map(item => (
+                                            <div key={item.id} class="bg-white/90 border border-[#CFA07E] rounded-xl p-4 flex items-start justify-between shadow-sm hover:border-[#C1714F] transition">
+                                                <div>
+                                                    <div class="flex items-center gap-2 mb-1">
+                                                        <span class="bg-[#E8D4BC] text-[#3B1F10] text-[10px] font-bold px-2 py-0.5 rounded border border-[#CFA07E]">{item.category}</span>
+                                                        <span class={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                                                            item.status === 'Approved' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+                                                        }`}>{item.status}</span>
+                                                    </div>
+                                                    <h4 class="font-extrabold text-sm text-[#3B1F10]">{item.item}</h4>
+                                                    <p class="text-xs text-[#5C2A14] mt-1 font-medium">{item.notes}</p>
+                                                </div>
+                                                <div class="text-right pl-3 shrink-0">
+                                                    <div class="text-base font-extrabold text-[#C1714F]">${Number(item.amount || 0).toLocaleString()}</div>
+                                                    <button 
+                                                        onClick={() => {
+                                                            setEditingBudget(item);
+                                                            setIsBudgetModalOpen(true);
+                                                        }}
+                                                        class="text-xs text-[#98573b] hover:text-[#3B1F10] mt-2 inline-block"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {}
+                        {mainTab === 'governance' && (
+                            <div class="space-y-6">
+                                {/* Charter Header Banner */}
+                                <div class="glass-panel rounded-2xl p-6 sm:p-8 border-l-8 border-l-[#C1714F] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                                    <div>
+                                        <div class="flex items-center space-x-3 mb-2">
+                                            <span class="bg-[#C1714F]/15 text-[#C1714F] border border-[#C1714F]/40 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                                                Official Governance
+                                            </span>
+                                            <span class="text-xs text-[#5C2A14] font-semibold">Updated Charter Document</span>
+                                        </div>
+                                        <h2 class="text-2xl sm:text-3xl font-extrabold text-[#3B1F10] mb-2">
+                                            {governance.title || 'SyeLabs Alumni & Leadership Council Charter'}
+                                        </h2>
+                                        <p class="text-sm text-[#5C2A14] font-medium max-w-4xl leading-relaxed">
+                                            {governance.mission}
+                                        </p>
+                                    </div>
+
+                                    <button 
+                                        onClick={() => setIsGovernanceModalOpen(true)}
+                                        class="bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-md shrink-0"
+                                    >
+                                        <i class="fa-solid fa-pen-to-square"></i> Edit Charter & Governance
+                                    </button>
+                                </div>
+
+                                {/* 4 Core Pillars Grid */}
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    {(governance.pillars || []).map((pillar, idx) => (
+                                        <div key={idx} class="bg-white/90 border border-[#CFA07E] rounded-2xl p-5 shadow-sm">
+                                            <div class="w-10 h-10 rounded-xl bg-[#C1714F]/15 text-[#C1714F] flex items-center justify-center font-bold text-lg mb-3">{idx + 1}</div>
+                                            <h4 class="font-extrabold text-sm text-[#3B1F10] mb-1">{pillar.title}</h4>
+                                            <p class="text-xs text-[#5C2A14] leading-relaxed">{pillar.desc}</p>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Leadership Structure & Roles */}
+                                <div class="glass-panel rounded-2xl p-6 sm:p-8">
+                                    <h3 class="text-xl font-extrabold text-[#3B1F10] mb-4 flex items-center gap-2">
+                                        <i class="fa-solid fa-users-gear text-[#C1714F]"></i> Leadership Roles & Responsibilities
+                                    </h3>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        {(governance.roles || []).map((role, idx) => (
+                                            <div key={idx} class="bg-white/90 border border-[#E0C9AA] p-5 rounded-xl">
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <h4 class="font-extrabold text-base text-[#3B1F10]">{role.title}</h4>
+                                                    <span class="bg-[#E8D4BC] text-[#3B1F10] text-xs font-bold px-2.5 py-0.5 rounded">{role.tag || 'Leadership'}</span>
+                                                </div>
+                                                <p class="text-xs text-[#5C2A14] leading-relaxed">{role.desc}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Agreements, Term Limits & Authority */}
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="glass-panel rounded-2xl p-6">
+                                        <h4 class="font-extrabold text-base text-[#3B1F10] mb-3 flex items-center gap-2">
+                                            <i class="fa-solid fa-handshake text-[#C1714F]"></i> Council Team Agreements & Term Limits
+                                        </h4>
+                                        <ul class="space-y-2.5 text-xs text-[#5C2A14] font-medium leading-relaxed">
+                                            {(governance.agreements || []).map((item, idx) => (
+                                                <li key={idx} class="flex items-start gap-2">
+                                                    <i class="fa-solid fa-check text-[#C1714F] mt-0.5"></i>
+                                                    <span>{item}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+
+                                    <div class="glass-panel rounded-2xl p-6">
+                                        <h4 class="font-extrabold text-base text-[#3B1F10] mb-3 flex items-center gap-2">
+                                            <i class="fa-solid fa-clock text-[#C1714F]"></i> Meeting Cadence & Decision Authority
+                                        </h4>
+                                        <ul class="space-y-2.5 text-xs text-[#5C2A14] font-medium leading-relaxed">
+                                            {(governance.cadence || []).map((item, idx) => (
+                                                <li key={idx} class="flex items-start gap-2">
+                                                    <i class="fa-solid fa-arrow-right text-[#C1714F] mt-0.5"></i>
+                                                    <span>{item}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {}
+                        {mainTab === 'curriculum' && (
+                            <div class="space-y-6">
+                                {/* Curriculum Header & Track Selector */}
+                                <div class="glass-panel p-6 sm:p-8 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                                    <div>
+                                        <h2 class="text-2xl font-extrabold text-[#3B1F10] flex items-center gap-2">
+                                            <i class="fa-solid fa-laptop-code text-[#C1714F]"></i> SyeLabs Program & Curriculum Workshop
+                                        </h2>
+                                        <p class="text-xs text-[#5C2A14] font-semibold mt-1">
+                                            Workshop syllabus builder, conference speaking modules, and fellow mentorship pathways
+                                        </p>
+                                    </div>
+
+                                    <button 
+                                        onClick={() => {
+                                            setEditingCurriculum({ track: curriculumTrack });
+                                            setIsCurriculumModalOpen(true);
+                                        }}
+                                        class="bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-md shrink-0"
+                                    >
+                                        <i class="fa-solid fa-plus"></i> Add Curriculum Item / Event
+                                    </button>
+                                </div>
+
+                                {/* Track Sub-Navigation Tabs */}
+                                <div class="flex items-center space-x-2 border-b border-[#CFA07E] pb-2">
+                                    <button 
+                                        onClick={() => setCurriculumTrack('homelabs')}
+                                        class={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                                            curriculumTrack === 'homelabs' ? 'bg-[#C1714F] text-white shadow' : 'bg-[#E8D4BC]/60 text-[#5C2A14] hover:bg-[#E8D4BC]'
+                                        }`}
+                                    >
+                                        <i class="fa-solid fa-server"></i> HomeLabs ("It's All Connected")
+                                    </button>
+
+                                    <button 
+                                        onClick={() => setCurriculumTrack('conferences')}
+                                        class={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                                            curriculumTrack === 'conferences' ? 'bg-[#C1714F] text-white shadow' : 'bg-[#E8D4BC]/60 text-[#5C2A14] hover:bg-[#E8D4BC]'
+                                        }`}
+                                    >
+                                        <i class="fa-solid fa-microphone text-[#3B1F10]"></i> Conferences & Speaking
+                                    </button>
+
+                                    <button 
+                                        onClick={() => setCurriculumTrack('mentorship')}
+                                        class={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                                            curriculumTrack === 'mentorship' ? 'bg-[#C1714F] text-white shadow' : 'bg-[#E8D4BC]/60 text-[#5C2A14] hover:bg-[#E8D4BC]'
+                                        }`}
+                                    >
+                                        <i class="fa-solid fa-user-graduate"></i> Mentorship & Interns
+                                    </button>
+                                </div>
+
+                                {/* Curriculum Track Modules Grid */}
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                    {curriculumItems
+                                        .filter(item => item.track === curriculumTrack)
+                                        .map((item, idx) => (
+                                            <div key={item.id || idx} class="glass-panel p-5 rounded-2xl flex flex-col justify-between space-y-3 hover:border-[#C1714F] transition">
+                                                <div>
+                                                    <div class="flex items-center justify-between mb-2">
+                                                        <span class="bg-[#E8D4BC] text-[#3B1F10] text-[10px] font-extrabold px-2 py-0.5 rounded border border-[#CFA07E]">
+                                                            {item.subtitle || 'Module'}
+                                                        </span>
+                                                        <span class="text-[11px] font-bold text-[#98573b]">
+                                                            <i class="fa-regular fa-calendar mr-1"></i>{item.date || 'Scheduled'}
+                                                        </span>
+                                                    </div>
+
+                                                    <h3 class="font-extrabold text-base text-[#3B1F10] leading-snug">
+                                                        {item.title}
+                                                    </h3>
+
+                                                    <p class="text-xs text-[#5C2A14] mt-2 leading-relaxed">
+                                                        {item.description}
+                                                    </p>
+
+                                                    {item.outcome && (
+                                                        <div class="mt-3 bg-[#F2E8D9] border border-[#E0C9AA] p-2.5 rounded-xl text-xs text-[#3B1F10]">
+                                                            <strong>Outcome:</strong> {item.outcome}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div class="pt-3 border-t border-[#E0C9AA] flex items-center justify-between text-xs text-[#5C2A14]">
+                                                    <span>Facilitator: <strong>{item.facilitator || 'Education Lead'}</strong></span>
+                                                    <button 
+                                                        onClick={() => {
+                                                            setEditingCurriculum(item);
+                                                            setIsCurriculumModalOpen(true);
+                                                        }}
+                                                        class="text-[#98573b] hover:text-[#3B1F10] font-bold"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                </div>
+                            </div>
+                        )}
+
+                    </main>
+
+                    {}
+                    
+                    {/* Milestone / Event Modal */}
+                    {isModalOpen && (
+                        <EventModal 
+                            event={editingEvent}
+                            teamOwners={teamOwners}
+                            onAddOwner={handleAddTeamOwner}
+                            onSave={handleSaveEvent}
+                            onDelete={handleDeleteEvent}
+                            onClose={() => {
+                                setIsModalOpen(false);
+                                setEditingEvent(null);
+                            }}
+                        />
+                    )}
+
+                    {/* Grant Entry Modal */}
+                    {isGrantModalOpen && (
+                        <GrantModal 
+                            grant={editingGrant}
+                            onSave={handleSaveGrant}
+                            onDelete={handleDeleteGrant}
+                            onClose={() => {
+                                setIsGrantModalOpen(false);
+                                setEditingGrant(null);
+                            }}
+                        />
+                    )}
+
+                    {/* Budget Item Modal */}
+                    {isBudgetModalOpen && (
+                        <BudgetModal 
+                            item={editingBudget}
+                            onSave={handleSaveBudget}
+                            onDelete={handleDeleteBudget}
+                            onClose={() => {
+                                setIsBudgetModalOpen(false);
+                                setEditingBudget(null);
+                            }}
+                        />
+                    )}
+
+                    {/* Curriculum Item Modal */}
+                    {isCurriculumModalOpen && (
+                        <CurriculumModal 
+                            item={editingCurriculum}
+                            teamOwners={teamOwners}
+                            onSave={handleSaveCurriculum}
+                            onDelete={handleDeleteCurriculum}
+                            onClose={() => {
+                                setIsCurriculumModalOpen(false);
+                                setEditingCurriculum(null);
+                            }}
+                        />
+                    )}
+
+                    {/* Governance Charter Modal */}
+                    {isGovernanceModalOpen && (
+                        <GovernanceModal 
+                            governance={governance}
+                            onSave={handleSaveGovernance}
+                            onClose={() => setIsGovernanceModalOpen(false)}
+                        />
+                    )}
+
+                    {/* Share Room Modal */}
+                    {isShareModalOpen && (
+                        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#3B1F10]/50 backdrop-blur-sm">
+                            <div class="bg-[#F7F1E8] border border-[#C1714F]/40 w-full max-w-md rounded-2xl p-6 shadow-2xl relative text-[#3B1F10]">
+                                <button onClick={() => setIsShareModalOpen(false)} class="absolute top-4 right-4 text-[#5C2A14] hover:text-[#3B1F10]">
+                                    <i class="fa-solid fa-xmark text-lg"></i>
+                                </button>
+
+                                <h3 class="font-extrabold text-lg text-[#3B1F10] mb-2 flex items-center gap-2">
+                                    <i class="fa-solid fa-share-nodes text-[#C1714F]"></i> Collaborate on SyeLabs Room
+                                </h3>
+                                <p class="text-xs text-[#5C2A14] mb-4">
+                                    Share this room ID with team members to collaborate on milestones, grants, and charter items in real time.
+                                </p>
+
+                                <div class="bg-white border border-[#CFA07E] rounded-xl p-3 flex items-center justify-between mb-4">
+                                    <span class="font-mono text-sm font-bold text-[#3B1F10]">{planId}</span>
+                                    <button 
+                                        onClick={handleCopyShareLink}
+                                        class="bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                                    >
+                                        Copy Code
+                                    </button>
+                                </div>
+
+                                <div class="text-right">
+                                    <button 
+                                        onClick={() => setIsShareModalOpen(false)}
+                                        class="bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] text-xs font-bold px-4 py-2 rounded-xl transition border border-[#CFA07E]"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function GovernanceModal({ governance, onSave, onClose }) {
+            const [title, setTitle] = useState(governance?.title || '');
+            const [mission, setMission] = useState(governance?.mission || '');
+            const [pillars, setPillars] = useState(governance?.pillars || []);
+            const [roles, setRoles] = useState(governance?.roles || []);
+            const [agreements, setAgreements] = useState(governance?.agreements || []);
+            const [cadence, setCadence] = useState(governance?.cadence || []);
+
+            const handleUpdatePillar = (index, field, value) => {
+                const updated = [...pillars];
+                updated[index] = { ...updated[index], [field]: value };
+                setPillars(updated);
+            };
+
+            const handleAddPillar = () => {
+                setPillars([...pillars, { title: 'New Pillar', desc: 'Pillar description...' }]);
+            };
+
+            const handleRemovePillar = (index) => {
+                setPillars(pillars.filter((_, i) => i !== index));
+            };
+
+            const handleUpdateRole = (index, field, value) => {
+                const updated = [...roles];
+                updated[index] = { ...updated[index], [field]: value };
+                setRoles(updated);
+            };
+
+            const handleAddRole = () => {
+                setRoles([...roles, { title: 'New Role Title', tag: 'Leadership', desc: 'Role duties and responsibilities...' }]);
+            };
+
+            const handleRemoveRole = (index) => {
+                setRoles(roles.filter((_, i) => i !== index));
+            };
+
+            const handleUpdateAgreement = (index, value) => {
+                const updated = [...agreements];
+                updated[index] = value;
+                setAgreements(updated);
+            };
+
+            const handleAddAgreement = () => {
+                setAgreements([...agreements, 'New agreement statement...']);
+            };
+
+            const handleRemoveAgreement = (index) => {
+                setAgreements(agreements.filter((_, i) => i !== index));
+            };
+
+            const handleUpdateCadence = (index, value) => {
+                const updated = [...cadence];
+                updated[index] = value;
+                setCadence(updated);
+            };
+
+            const handleAddCadence = () => {
+                setCadence([...cadence, 'New meeting cadence rule...']);
+            };
+
+            const handleRemoveCadence = (index) => {
+                setCadence(cadence.filter((_, i) => i !== index));
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                onSave({
+                    title,
+                    mission,
+                    pillars,
+                    roles,
+                    agreements,
+                    cadence
+                });
+            };
+
+            return (
+                <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#3B1F10]/50 backdrop-blur-sm">
+                    <div class="bg-[#F7F1E8] border border-[#C1714F]/40 w-full max-w-2xl rounded-2xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto text-[#3B1F10]">
+                        <button onClick={onClose} class="absolute top-4 right-4 text-[#5C2A14] hover:text-[#3B1F10]">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
+
+                        <h3 class="font-extrabold text-lg text-[#3B1F10] mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-landmark text-[#C1714F]"></i> Edit SyeLabs Governance Charter
+                        </h3>
+
+                        <form onSubmit={handleSubmit} class="space-y-5">
+                            <div>
+                                <label class="block text-xs font-bold text-[#5C2A14] mb-1">Charter Title</label>
+                                <input 
+                                    type="text" 
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-sm text-[#3B1F10] font-bold focus:outline-none focus:border-[#C1714F]"
+                                />
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-[#5C2A14] mb-1">Mission & Vision Statement</label>
+                                <textarea 
+                                    rows="3"
+                                    value={mission}
+                                    onChange={(e) => setMission(e.target.value)}
+                                    class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                ></textarea>
+                            </div>
+
+                            {/* Pillars Section */}
+                            <div class="bg-white/80 border border-[#CFA07E] p-4 rounded-xl space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="font-extrabold text-xs text-[#3B1F10] uppercase">Core Pillars</h4>
+                                    <button type="button" onClick={handleAddPillar} class="text-xs text-[#C1714F] font-bold hover:underline">+ Add Pillar</button>
+                                </div>
+                                {pillars.map((p, idx) => (
+                                    <div key={idx} class="bg-[#F2E8D9] border border-[#E0C9AA] p-3 rounded-lg space-y-2 relative">
+                                        <button type="button" onClick={() => handleRemovePillar(idx)} class="absolute top-2 right-2 text-xs text-red-600 hover:text-red-800">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                        <input 
+                                            type="text" 
+                                            value={p.title}
+                                            onChange={(e) => handleUpdatePillar(idx, 'title', e.target.value)}
+                                            placeholder="Pillar Title"
+                                            class="w-[85%] bg-white border border-[#CFA07E] rounded px-2 py-1 text-xs font-bold text-[#3B1F10]"
+                                        />
+                                        <textarea 
+                                            rows="2"
+                                            value={p.desc}
+                                            onChange={(e) => handleUpdatePillar(idx, 'desc', e.target.value)}
+                                            placeholder="Pillar Description"
+                                            class="w-full bg-white border border-[#CFA07E] rounded px-2 py-1 text-xs text-[#3B1F10]"
+                                        ></textarea>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Roles Section */}
+                            <div class="bg-white/80 border border-[#CFA07E] p-4 rounded-xl space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="font-extrabold text-xs text-[#3B1F10] uppercase">Leadership Roles & Responsibilities</h4>
+                                    <button type="button" onClick={handleAddRole} class="text-xs text-[#C1714F] font-bold hover:underline">+ Add Role</button>
+                                </div>
+                                {roles.map((r, idx) => (
+                                    <div key={idx} class="bg-[#F2E8D9] border border-[#E0C9AA] p-3 rounded-lg space-y-2 relative">
+                                        <button type="button" onClick={() => handleRemoveRole(idx)} class="absolute top-2 right-2 text-xs text-red-600 hover:text-red-800">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                        <div class="flex items-center gap-2 w-[85%]">
+                                            <input 
+                                                type="text" 
+                                                value={r.title}
+                                                onChange={(e) => handleUpdateRole(idx, 'title', e.target.value)}
+                                                placeholder="Role Title"
+                                                class="flex-1 bg-white border border-[#CFA07E] rounded px-2 py-1 text-xs font-bold text-[#3B1F10]"
+                                            />
+                                            <input 
+                                                type="text" 
+                                                value={r.tag}
+                                                onChange={(e) => handleUpdateRole(idx, 'tag', e.target.value)}
+                                                placeholder="Tag (e.g. Leadership)"
+                                                class="w-28 bg-white border border-[#CFA07E] rounded px-2 py-1 text-xs text-[#3B1F10]"
+                                            />
+                                        </div>
+                                        <textarea 
+                                            rows="2"
+                                            value={r.desc}
+                                            onChange={(e) => handleUpdateRole(idx, 'desc', e.target.value)}
+                                            placeholder="Role Description"
+                                            class="w-full bg-white border border-[#CFA07E] rounded px-2 py-1 text-xs text-[#3B1F10]"
+                                        ></textarea>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Team Agreements & Cadence */}
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="bg-white/80 border border-[#CFA07E] p-3 rounded-xl space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="font-extrabold text-xs text-[#3B1F10] uppercase">Agreements & Term Limits</h4>
+                                        <button type="button" onClick={handleAddAgreement} class="text-[11px] text-[#C1714F] font-bold hover:underline">+ Add</button>
+                                    </div>
+                                    {agreements.map((item, idx) => (
+                                        <div key={idx} class="flex items-center gap-1.5">
+                                            <input 
+                                                type="text"
+                                                value={item}
+                                                onChange={(e) => handleUpdateAgreement(idx, e.target.value)}
+                                                class="flex-1 bg-white border border-[#CFA07E] rounded px-2 py-1 text-xs text-[#3B1F10]"
+                                            />
+                                            <button type="button" onClick={() => handleRemoveAgreement(idx)} class="text-xs text-red-600 px-1">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div class="bg-white/80 border border-[#CFA07E] p-3 rounded-xl space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="font-extrabold text-xs text-[#3B1F10] uppercase">Meeting Cadence & Rules</h4>
+                                        <button type="button" onClick={handleAddCadence} class="text-[11px] text-[#C1714F] font-bold hover:underline">+ Add</button>
+                                    </div>
+                                    {cadence.map((item, idx) => (
+                                        <div key={idx} class="flex items-center gap-1.5">
+                                            <input 
+                                                type="text"
+                                                value={item}
+                                                onChange={(e) => handleUpdateCadence(idx, e.target.value)}
+                                                class="flex-1 bg-white border border-[#CFA07E] rounded px-2 py-1 text-xs text-[#3B1F10]"
+                                            />
+                                            <button type="button" onClick={() => handleRemoveCadence(idx)} class="text-xs text-red-600 px-1">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-end space-x-2 pt-4 border-t border-[#E0C9AA]">
+                                <button 
+                                    type="button"
+                                    onClick={onClose}
+                                    class="bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] text-xs font-bold px-4 py-2 rounded-xl transition border border-[#CFA07E]"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit"
+                                    class="bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-5 py-2 rounded-xl transition shadow-md"
+                                >
+                                    Save Governance Charter
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        function EventModal({ event, teamOwners, onAddOwner, onSave, onDelete, onClose }) {
+            const [title, setTitle] = useState(event?.title || '');
+            const [date, setDate] = useState(event?.date || new Date().toISOString().split('T')[0]);
+            const [category, setCategory] = useState(event?.category || 'Legal & Org');
+            const [priority, setPriority] = useState(event?.priority || 'High');
+            const [assignee, setAssignee] = useState(event?.assignee || '');
+            const [description, setDescription] = useState(event?.description || '');
+            const [deliverable, setDeliverable] = useState(event?.deliverable || '');
+            const [status, setStatus] = useState(event?.status || 'To Do');
+            const [newCustomOwner, setNewCustomOwner] = useState('');
+
+            const selectedOwners = useMemo(() => {
+                return assignee ? assignee.split(',').map(a => a.trim()).filter(Boolean) : [];
+            }, [assignee]);
+
+            const toggleOwner = (owner) => {
+                let updated;
+                if (selectedOwners.includes(owner)) {
+                    updated = selectedOwners.filter(o => o !== owner);
+                } else {
+                    updated = [...selectedOwners, owner];
+                }
+                setAssignee(updated.join(', '));
+            };
+
+            const handleCreateOwner = (e) => {
+                e.preventDefault();
+                if (!newCustomOwner.trim()) return;
+                onAddOwner(newCustomOwner.trim());
+                toggleOwner(newCustomOwner.trim());
+                setNewCustomOwner('');
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!title.trim()) return;
+                onSave({
+                    title,
+                    date,
+                    category,
+                    priority,
+                    assignee,
+                    description,
+                    deliverable,
+                    status
+                });
+            };
+
+            return (
+                <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#3B1F10]/50 backdrop-blur-sm">
+                    <div class="bg-[#F7F1E8] border border-[#C1714F]/40 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto text-[#3B1F10]">
+                        <button onClick={onClose} class="absolute top-4 right-4 text-[#5C2A14] hover:text-[#3B1F10]">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
+
+                        <h3 class="font-extrabold text-lg text-[#3B1F10] mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-plus text-[#C1714F]"></i>
+                            {event?.id ? 'Edit SyeLabs Milestone' : 'Add SyeLabs Milestone'}
+                        </h3>
+
+                        <form onSubmit={handleSubmit} class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-[#5C2A14] mb-1">Milestone / Task Title *</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    placeholder="e.g. Non-Profit Co-Partnership MOU"
+                                    class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-sm text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                />
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-[#5C2A14] mb-1">Target Date *</label>
+                                    <input 
+                                        type="date" 
+                                        required
+                                        value={date}
+                                        onChange={(e) => setDate(e.target.value)}
+                                        class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F] cursor-pointer"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-[#5C2A14] mb-1">Category</label>
+                                    <select 
+                                        value={category}
+                                        onChange={(e) => setCategory(e.target.value)}
+                                        class="w-full bg-white border border-[#CFA07E] rounded-xl px-2.5 py-2 text-xs text-[#3B1F10] focus:outline-none"
+                                    >
+                                        <option value="Legal & Org">Legal & Org</option>
+                                        <option value="Conferences">Conferences</option>
+                                        <option value="Content">Content</option>
+                                        <option value="Marketing">Marketing</option>
+                                        <option value="Partnerships">Partnerships</option>
+                                        <option value="Grants">Grants</option>
+                                        <option value="Scaling">Scaling</option>
+                                        <option value="Media">Media</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Enhanced Assignees / Owners Section */}
+                            <div class="bg-white/80 border border-[#CFA07E] rounded-xl p-3 space-y-2">
+                                <label class="block text-xs font-bold text-[#5C2A14] flex items-center justify-between">
+                                    <span>Assign Owners / Leads *</span>
+                                    <span class="text-[10px] text-[#98573b]">Click chip to select/deselect</span>
+                                </label>
+
+                                <div class="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto py-1">
+                                    {teamOwners.map(owner => {
+                                        const isSel = selectedOwners.includes(owner);
+                                        return (
+                                            <button 
+                                                key={owner}
+                                                type="button"
+                                                onClick={() => toggleOwner(owner)}
+                                                class={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                                                    isSel ? 'bg-[#C1714F] text-white border border-[#A85A38]' : 'bg-[#E8D4BC] text-[#3B1F10] border border-[#CFA07E] hover:bg-[#E0C9AA]'
+                                                }`}
+                                            >
+                                                <i class={`fa-solid ${isSel ? 'fa-check' : 'fa-plus'} text-[10px]`}></i>
+                                                {owner}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                <div class="flex items-center gap-2 pt-1 border-t border-[#E0C9AA]">
+                                    <input 
+                                        type="text" 
+                                        value={newCustomOwner}
+                                        onChange={(e) => setNewCustomOwner(e.target.value)}
+                                        placeholder="Add new team owner name..."
+                                        class="flex-1 bg-white border border-[#CFA07E] rounded-lg px-2.5 py-1 text-xs text-[#3B1F10] focus:outline-none"
+                                    />
+                                    <button 
+                                        type="button"
+                                        onClick={handleCreateOwner}
+                                        class="bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] text-xs font-bold px-3 py-1 rounded-lg border border-[#CFA07E]"
+                                    >
+                                        + Add Owner
+                                    </button>
+                                </div>
+
+                                <input 
+                                    type="text" 
+                                    value={assignee}
+                                    onChange={(e) => setAssignee(e.target.value)}
+                                    placeholder="e.g. Leadership, Grant Lead"
+                                    class="w-full bg-white/50 border border-[#CFA07E]/50 rounded-lg px-2 py-1 text-[11px] text-[#3B1F10] focus:outline-none"
+                                />
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-[#5C2A14] mb-1">Priority</label>
+                                    <select 
+                                        value={priority}
+                                        onChange={(e) => setPriority(e.target.value)}
+                                        class="w-full bg-white border border-[#CFA07E] rounded-xl px-2.5 py-2 text-xs text-[#3B1F10] focus:outline-none"
+                                    >
+                                        <option value="High">High</option>
+                                        <option value="Medium">Medium</option>
+                                        <option value="Low">Low</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-[#5C2A14] mb-1">Status</label>
+                                    <select 
+                                        value={status}
+                                        onChange={(e) => setStatus(e.target.value)}
+                                        class="w-full bg-white border border-[#CFA07E] rounded-xl px-2.5 py-2 text-xs text-[#3B1F10] focus:outline-none"
+                                    >
+                                        <option value="To Do">To Do</option>
+                                        <option value="In Progress">In Progress</option>
+                                        <option value="Completed">Completed</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-[#5C2A14] mb-1">Key Deliverable / Outcome</label>
+                                <input 
+                                    type="text" 
+                                    value={deliverable}
+                                    onChange={(e) => setDeliverable(e.target.value)}
+                                    placeholder="e.g. Signed MOU, Published Workshop Deck"
+                                    class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                />
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-[#5C2A14] mb-1">Description & Next Steps</label>
+                                <textarea 
+                                    rows="3"
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    placeholder="Enter details, team notes, and links..."
+                                    class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                ></textarea>
+                            </div>
+
+                            <div class="flex items-center justify-between pt-4 border-t border-[#E0C9AA]">
+                                {event?.id ? (
+                                    <button 
+                                        type="button"
+                                        onClick={() => onDelete(event.id)}
+                                        class="bg-[#C1714F]/10 hover:bg-[#C1714F]/20 text-[#C1714F] text-xs font-bold px-4 py-2 rounded-xl transition border border-[#C1714F]/30"
+                                    >
+                                        Delete
+                                    </button>
+                                ) : (
+                                    <div></div>
+                                )}
+
+                                <div class="flex items-center space-x-2">
+                                    <button 
+                                        type="button"
+                                        onClick={onClose}
+                                        class="bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] text-xs font-bold px-4 py-2 rounded-xl transition border border-[#CFA07E]"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        type="submit"
+                                        class="bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-5 py-2 rounded-xl transition shadow-md"
+                                    >
+                                        Save Milestone
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        function CurriculumModal({ item, teamOwners, onSave, onDelete, onClose }) {
+            const [title, setTitle] = useState(item?.title || '');
+            const [subtitle, setSubtitle] = useState(item?.subtitle || 'Module');
+            const [track, setTrack] = useState(item?.track || 'homelabs');
+            const [description, setDescription] = useState(item?.description || '');
+            const [outcome, setOutcome] = useState(item?.outcome || '');
+            const [facilitator, setFacilitator] = useState(item?.facilitator || 'Education Lead');
+            const [date, setDate] = useState(item?.date || new Date().toISOString().split('T')[0]);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!title.trim()) return;
+                onSave({
+                    title,
+                    subtitle,
+                    track,
+                    description,
+                    outcome,
+                    facilitator,
+                    date
+                });
+            };
+
+            return (
+                <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#3B1F10]/50 backdrop-blur-sm">
+                    <div class="bg-[#F7F1E8] border border-[#C1714F]/40 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto text-[#3B1F10]">
+                        <button onClick={onClose} class="absolute top-4 right-4 text-[#5C2A14] hover:text-[#3B1F10]">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
+
+                        <h3 class="font-extrabold text-lg text-[#3B1F10] mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-book-open text-[#C1714F]"></i>
+                            {item?.id ? 'Edit Curriculum Event' : 'Add Curriculum Event / Module'}
+                        </h3>
+
+                        <form onSubmit={handleSubmit} class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-[#5C2A14] mb-1">Workshop Track *</label>
+                                <select 
+                                    value={track}
+                                    onChange={(e) => setTrack(e.target.value)}
+                                    class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs font-bold text-[#3B1F10] focus:outline-none"
+                                >
+                                    <option value="homelabs">HomeLabs ("It's All Connected")</option>
+                                    <option value="conferences">Conferences & Speaking</option>
+                                    <option value="mentorship">Mentorship & Intern Pathways</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-[#5C2A14] mb-1">Module / Event Title *</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    placeholder="e.g. ISO Boot Media & Linux Administration"
+                                    class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-sm text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                />
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-[#5C2A14] mb-1">Subtitle / Module Tag</label>
+                                    <input 
+                                        type="text" 
+                                        value={subtitle}
+                                        onChange={(e) => setSubtitle(e.target.value)}
+                                        placeholder="e.g. Module 4, Panel Session"
+                                        class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-[#5C2A14] mb-1">Target Date / Session</label>
+                                    <input 
+                                        type="date" 
+                                        value={date}
+                                        onChange={(e) => setDate(e.target.value)}
+                                        class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-[#5C2A14] mb-1">Owner / Lead Facilitator</label>
+                                <select 
+                                    value={facilitator}
+                                    onChange={(e) => setFacilitator(e.target.value)}
+                                    class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none"
+                                >
+                                    {teamOwners.map(o => <option key={o} value={o}>{o}</option>)}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-[#5C2A14] mb-1">Description & Topic Syllabus</label>
+                                <textarea 
+                                    rows="3"
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    placeholder="Detail curriculum topics, hardware needed, slides, guest panelists..."
+                                    class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                ></textarea>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-[#5C2A14] mb-1">Target Learning Outcome / Deliverable</label>
+                                <input 
+                                    type="text" 
+                                    value={outcome}
+                                    onChange={(e) => setOutcome(e.target.value)}
+                                    placeholder="e.g. Students deploy Proxmox server and ISO container"
+                                    class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                />
+                            </div>
+
+                            <div class="flex items-center justify-between pt-4 border-t border-[#E0C9AA]">
+                                {item?.id ? (
+                                    <button 
+                                        type="button"
+                                        onClick={() => onDelete(item.id)}
+                                        class="bg-[#C1714F]/10 hover:bg-[#C1714F]/20 text-[#C1714F] text-xs font-bold px-4 py-2 rounded-xl transition border border-[#C1714F]/30"
+                                    >
+                                        Delete
+                                    </button>
+                                ) : (
+                                    <div></div>
+                                )}
+
+                                <div class="flex items-center space-x-2">
+                                    <button 
+                                        type="button"
+                                        onClick={onClose}
+                                        class="bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] text-xs font-bold px-4 py-2 rounded-xl transition border border-[#CFA07E]"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        type="submit"
+                                        class="bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-5 py-2 rounded-xl transition shadow-md"
+                                    >
+                                        Save Curriculum Event
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        function GrantModal({ grant, onSave, onDelete, onClose }) {
+            const [organization, setOrganization] = useState(grant?.organization || '');
+            const [link, setLink] = useState(grant?.link || '');
+            const [amount, setAmount] = useState(grant?.amount || '');
+            const [eligibility, setEligibility] = useState(grant?.eligibility || '');
+            const [deadline, setDeadline] = useState(grant?.deadline || '');
+            const [status, setStatus] = useState(grant?.status || 'In Progress');
+            const [date, setDate] = useState(grant?.date || new Date().toISOString().split('T')[0]);
+            const [notes, setNotes] = useState(grant?.notes || '');
+            const [initials, setInitials] = useState(grant?.initials || 'SL');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!organization.trim()) return;
+                onSave({
+                    organization,
+                    link,
+                    amount: Number(amount) || 0,
+                    eligibility,
+                    deadline,
+                    status,
+                    date,
+                    notes,
+                    initials
+                });
+            };
+
+            return (
+                <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#3B1F10]/50 backdrop-blur-sm">
+                    <div class="bg-[#F7F1E8] border border-[#C1714F]/40 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto text-[#3B1F10]">
+                        <button onClick={onClose} class="absolute top-4 right-4 text-[#5C2A14] hover:text-[#3B1F10]">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
+
+                        <h3 class="font-extrabold text-lg text-[#3B1F10] mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-hand-holding-dollar text-[#C1714F]"></i>
+                            {grant?.id ? 'Edit Grant Entry' : 'Add Grant Application Entry'}
+                        </h3>
+
+                        <form onSubmit={handleSubmit} class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-[#5C2A14] mb-1">Organization / Grantor *</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    value={organization}
+                                    onChange={(e) => setOrganization(e.target.value)}
+                                    placeholder="e.g. AWS Imagine Grant"
+                                    class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-sm text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                />
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-[#5C2A14] mb-1">Grantor Link</label>
+                                    <input 
+                                        type="url" 
+                                        value={link}
+                                        onChange={(e) => setLink(e.target.value)}
+                                        placeholder="https://..."
+                                        class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-[#5C2A14] mb-1">Amount ($)</label>
+                                    <input 
+                                        type="number" 
+                                        value={amount}
+                                        onChange={(e) => setAmount(e.target.value)}
+                                        placeholder="25000"
+                                        class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-[#5C2A14] mb-1">Deadline (if applicable)</label>
+                                    <input 
+                                        type="date" 
+                                        value={deadline}
+                                        onChange={(e) => setDeadline(e.target.value)}
+                                        class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-[#5C2A14] mb-1">Status</label>
+                                    <select 
+                                        value={status}
+                                        onChange={(e) => setStatus(e.target.value)}
+                                        class="w-full bg-white border border-[#CFA07E] rounded-xl px-2.5 py-2 text-xs text-[#3B1F10] focus:outline-none"
+                                    >
+                                        <option value="Drafting">Drafting</option>
+                                        <option value="In Progress">In Progress</option>
+                                        <option value="Submitted">Submitted</option>
+                                        <option value="Under Review">Under Review</option>
+                                        <option value="Awarded">Awarded</option>
+                                        <option value="Declined">Declined</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-[#5C2A14] mb-1">Eligibility Criteria</label>
+                                    <input 
+                                        type="text" 
+                                        value={eligibility}
+                                        onChange={(e) => setEligibility(e.target.value)}
+                                        placeholder="501c3 tech focus"
+                                        class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-[#5C2A14] mb-1">Initials (Owner)</label>
+                                    <input 
+                                        type="text" 
+                                        value={initials}
+                                        onChange={(e) => setInitials(e.target.value)}
+                                        placeholder="GL, SB, MW"
+                                        class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-[#5C2A14] mb-1">Notes / Next Steps</label>
+                                <textarea 
+                                    rows="3"
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
+                                    placeholder="Enter application progress, impact stories attached, review dates..."
+                                    class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                ></textarea>
+                            </div>
+
+                            <div class="flex items-center justify-between pt-4 border-t border-[#E0C9AA]">
+                                {grant?.id ? (
+                                    <button 
+                                        type="button"
+                                        onClick={() => onDelete(grant.id)}
+                                        class="bg-[#C1714F]/10 hover:bg-[#C1714F]/20 text-[#C1714F] text-xs font-bold px-4 py-2 rounded-xl transition border border-[#C1714F]/30"
+                                    >
+                                        Delete
+                                    </button>
+                                ) : (
+                                    <div></div>
+                                )}
+
+                                <div class="flex items-center space-x-2">
+                                    <button 
+                                        type="button"
+                                        onClick={onClose}
+                                        class="bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] text-xs font-bold px-4 py-2 rounded-xl transition border border-[#CFA07E]"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        type="submit"
+                                        class="bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-5 py-2 rounded-xl transition shadow-md"
+                                    >
+                                        Save Grant
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        function BudgetModal({ item, onSave, onDelete, onClose }) {
+            const [budgetItem, setBudgetItem] = useState(item?.item || '');
+            const [category, setCategory] = useState(item?.category || 'Marketing');
+            const [amount, setAmount] = useState(item?.amount || '');
+            const [status, setStatus] = useState(item?.status || 'Pending');
+            const [notes, setNotes] = useState(item?.notes || '');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!budgetItem.trim()) return;
+                onSave({
+                    item: budgetItem,
+                    category,
+                    amount: Number(amount) || 0,
+                    status,
+                    notes
+                });
+            };
+
+            return (
+                <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#3B1F10]/50 backdrop-blur-sm">
+                    <div class="bg-[#F7F1E8] border border-[#C1714F]/40 w-full max-w-md rounded-2xl p-6 shadow-2xl relative text-[#3B1F10]">
+                        <button onClick={onClose} class="absolute top-4 right-4 text-[#5C2A14] hover:text-[#3B1F10]">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
+
+                        <h3 class="font-extrabold text-lg text-[#3B1F10] mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-wallet text-[#C1714F]"></i>
+                            {item?.id ? 'Edit Budget Line Item' : 'Add Budget Line Item'}
+                        </h3>
+
+                        <form onSubmit={handleSubmit} class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-[#5C2A14] mb-1">Line Item Description *</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    value={budgetItem}
+                                    onChange={(e) => setBudgetItem(e.target.value)}
+                                    placeholder="e.g. SyeLabs Embroidered Caps & Swag"
+                                    class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-sm text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                />
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-[#5C2A14] mb-1">Category</label>
+                                    <select 
+                                        value={category}
+                                        onChange={(e) => setCategory(e.target.value)}
+                                        class="w-full bg-white border border-[#CFA07E] rounded-xl px-2.5 py-2 text-xs text-[#3B1F10] focus:outline-none"
+                                    >
+                                        <option value="Legal & Org">Legal & Org</option>
+                                        <option value="Marketing">Marketing</option>
+                                        <option value="Conferences">Conferences</option>
+                                        <option value="Programs">Programs</option>
+                                        <option value="Scaling">Scaling</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-[#5C2A14] mb-1">Estimated Cost ($)</label>
+                                    <input 
+                                        type="number" 
+                                        required
+                                        value={amount}
+                                        onChange={(e) => setAmount(e.target.value)}
+                                        placeholder="1200"
+                                        class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-[#5C2A14] mb-1">Approval Status</label>
+                                <select 
+                                    value={status}
+                                    onChange={(e) => setStatus(e.target.value)}
+                                    class="w-full bg-white border border-[#CFA07E] rounded-xl px-2.5 py-2 text-xs text-[#3B1F10] focus:outline-none"
+                                >
+                                    <option value="Planned">Planned</option>
+                                    <option value="Pending">Pending Approval</option>
+                                    <option value="Approved">Approved</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-[#5C2A14] mb-1">Notes / Vendor Info</label>
+                                <input 
+                                    type="text" 
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
+                                    placeholder="Order quote details, lead times..."
+                                    class="w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                />
+                            </div>
+
+                            <div class="flex items-center justify-between pt-4 border-t border-[#E0C9AA]">
+                                {item?.id ? (
+                                    <button 
+                                        type="button"
+                                        onClick={() => onDelete(item.id)}
+                                        class="bg-[#C1714F]/10 hover:bg-[#C1714F]/20 text-[#C1714F] text-xs font-bold px-4 py-2 rounded-xl transition border border-[#C1714F]/30"
+                                    >
+                                        Delete
+                                    </button>
+                                ) : (
+                                    <div></div>
+                                )}
+
+                                <div class="flex items-center space-x-2">
+                                    <button 
+                                        type="button"
+                                        onClick={onClose}
+                                        class="bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] text-xs font-bold px-4 py-2 rounded-xl transition border border-[#CFA07E]"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        type="submit"
+                                        class="bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-5 py-2 rounded-xl transition shadow-md"
+                                    >
+                                        Save Line Item
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        const rootElement = document.getElementById('root');
+        const root = ReactDOM.createRoot(rootElement);
+        root.render(<SyeLabsApp />);
+    </script>
+</body>
+</html>
+

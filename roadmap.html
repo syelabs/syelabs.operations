@@ -653,6 +653,8 @@
 
         function SyeLabsApp() {
             const [planId] = useState('syelabs-master-plan');
+            // True when sign-out was halted because an edit could not be saved.
+            const [signOutBlocked, setSignOutBlocked] = useState(false);
             const [planTitle, setPlanTitle] = useState('SyeLabs Continuous Strategic Roadmap');
             const [startDate, setStartDate] = useState(() => toLocalISODate());
             
@@ -775,7 +777,24 @@
                 }
             };
 
-            const handleSignOut = async () => {
+            // discardUnsaved is set only by the "Sign out anyway" escape hatch in
+            // the warning below, which is the one path allowed to drop an edit.
+            const handleSignOut = async (discardUnsaved = false) => {
+                // A debounced edit still in its 800ms window would otherwise be
+                // lost twice over: pushToCloud no-ops once the user is null, and
+                // the local cache is cleared below. Land it while we still can.
+                if (!discardUnsaved) {
+                    let flushed;
+                    try { flushed = await flushPendingSave(); } catch (e) { flushed = false; }
+                    // undefined means there was nothing queued; false means the
+                    // write genuinely failed and signing out now would lose it.
+                    if (flushed === false) {
+                        setSignOutBlocked(true);
+                        return;
+                    }
+                }
+                setSignOutBlocked(false);
+
                 // Detach the snapshot listener FIRST. Signing out revokes the
                 // credential, and a listener still attached at that moment fires
                 // permission-denied, which would otherwise be misread as the
@@ -873,9 +892,11 @@
                 } catch (e) {}
             };
 
+            // Resolves true only if the write actually landed in Firestore.
+            // Callers that just fire-and-forget can keep ignoring the result.
             const pushToCloud = async (payload) => {
                 const { db, appId, user } = window.SyeLabsFB;
-                if (!db || !user) return;
+                if (!db || !user) return false;
 
                 try {
                     setSyncing(true);
@@ -885,8 +906,10 @@
                         ...payload,
                         lastUpdatedBy: user.uid
                     }, { merge: true });
+                    return true;
                 } catch (e) {
                     console.warn("Cloud save notice (saved locally instead):", e.message || e);
+                    return false;
                 } finally {
                     setSyncing(false);
                 }
@@ -915,7 +938,14 @@
                 if (pending.payload) {
                     const payload = pending.payload;
                     pending.payload = null;
-                    pushToCloud(payload);
+                    // Returned so callers that must not race the write - sign-out
+                    // above all - can await it. Fire-and-forget callers ignore it.
+                    return pushToCloud(payload).then(ok => {
+                        // A failed write goes back on the queue, so "Try again"
+                        // in the sign-out warning has something left to send.
+                        if (!ok && !pending.payload) pending.payload = payload;
+                        return ok;
+                    });
                 }
             };
 
@@ -963,6 +993,47 @@
                 setTeamOwners(updated);
                 savePlanToCloud(events, grants, budgetItems, curriculumItems, planTitle, startDate, totalBudgetCap, updated);
                 showToast(`New team owner "${newOwner}" added!`, 'success');
+            };
+
+            // Removing an owner only edits the roster of chips. Tasks already
+            // assigned to them keep their assignee text, so nothing is silently
+            // lost — the toast reports how many still reference the name.
+            const handleDeleteTeamOwner = (owner) => {
+                const updated = teamOwners.filter(o => o !== owner);
+                if (updated.length === teamOwners.length) return;
+                setTeamOwners(updated);
+                savePlanToCloud(events, grants, budgetItems, curriculumItems, planTitle, startDate, totalBudgetCap, updated);
+                const stillUsed = events.filter(e =>
+                    e.assignee && e.assignee.split(',').map(a => a.trim()).includes(owner)
+                ).length;
+                showToast(
+                    stillUsed
+                        ? `Removed "${owner}" — ${stillUsed} task${stillUsed > 1 ? 's' : ''} still list them.`
+                        : `Owner "${owner}" removed.`,
+                    'success'
+                );
+            };
+
+            // Renaming does propagate into tasks: the name still means the same
+            // person, so every assignee referencing it is rewritten.
+            const handleRenameTeamOwner = (oldName, newName) => {
+                const next = newName.trim();
+                if (!next || next === oldName) return;
+                if (teamOwners.includes(next)) {
+                    showToast(`"${next}" is already on the list.`, 'info');
+                    return;
+                }
+                const updatedOwners = teamOwners.map(o => (o === oldName ? next : o));
+                const updatedEvents = events.map(evt => {
+                    if (!evt.assignee) return evt;
+                    const list = evt.assignee.split(',').map(a => a.trim()).filter(Boolean);
+                    if (!list.includes(oldName)) return evt;
+                    return { ...evt, assignee: list.map(a => (a === oldName ? next : a)).join(', ') };
+                });
+                setTeamOwners(updatedOwners);
+                setEvents(updatedEvents);
+                savePlanToCloud(updatedEvents, grants, budgetItems, curriculumItems, planTitle, startDate, totalBudgetCap, updatedOwners);
+                showToast(`Renamed "${oldName}" to "${next}".`, 'success');
             };
 
             // Calculate current 3 displayed months for timeline
@@ -1255,7 +1326,7 @@
                                         Ask a council co-chair to add this address, then sign in again.
                                     </p>
                                     <button
-                                        onClick={handleSignOut}
+                                        onClick={() => handleSignOut()}
                                         className="w-full bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] text-xs font-bold px-4 py-2.5 rounded-xl transition border border-[#CFA07E]"
                                     >
                                         Try a different account
@@ -1365,7 +1436,7 @@
                                             {authUser.displayName || authUser.email}
                                         </span>
                                         <button
-                                            onClick={handleSignOut}
+                                            onClick={() => handleSignOut()}
                                             title="Sign out"
                                             className="text-[#98573b] hover:text-[#3B1F10] transition px-1"
                                         >
@@ -2272,12 +2343,55 @@
 
                     </main>
 
+                    {/* Sign-out halted: the last edit never reached Firestore, and
+                        signing out would clear the only remaining copy. */}
+                    {signOutBlocked && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#3B1F10]/50 backdrop-blur-sm">
+                            <div className="bg-[#F7F1E8] border border-[#C1714F]/40 w-full max-w-md rounded-2xl p-6 shadow-2xl text-[#3B1F10]">
+                                <h3 className="font-extrabold text-lg mb-3 flex items-center gap-2">
+                                    <i className="fa-solid fa-triangle-exclamation text-[#C1714F]"></i>
+                                    Your last edit hasn't saved
+                                </h3>
+                                <p className="text-xs text-[#5C2A14] leading-relaxed mb-5">
+                                    The cloud could not be reached, so your most recent change is
+                                    still only on this computer. Signing out clears that local copy,
+                                    which would lose the change. Check your connection and try again.
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSignOut()}
+                                        className="flex-1 bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-4 py-2 rounded-lg transition"
+                                    >
+                                        Try again
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSignOutBlocked(false)}
+                                        className="flex-1 bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] text-xs font-bold px-4 py-2 rounded-lg border border-[#CFA07E] transition"
+                                    >
+                                        Stay signed in
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSignOut(true)}
+                                        className="flex-1 text-[#98573b] hover:text-[#5C2A14] text-xs font-bold px-4 py-2 rounded-lg underline transition"
+                                    >
+                                        Sign out anyway
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Milestone / Event Modal */}
                     {isModalOpen && (
                         <EventModal 
                             event={editingEvent}
                             teamOwners={teamOwners}
                             onAddOwner={handleAddTeamOwner}
+                            onDeleteOwner={handleDeleteTeamOwner}
+                            onRenameOwner={handleRenameTeamOwner}
                             onSave={handleSaveEvent}
                             onDelete={handleDeleteEvent}
                             onClose={() => {
@@ -2606,7 +2720,7 @@
             );
         }
 
-        function EventModal({ event, teamOwners, onAddOwner, onSave, onDelete, onClose }) {
+        function EventModal({ event, teamOwners, onAddOwner, onDeleteOwner, onRenameOwner, onSave, onDelete, onClose }) {
             useEscapeToClose(onClose);
             const [title, setTitle] = useState(event?.title || '');
             const [date, setDate] = useState(event?.date || toLocalISODate());
@@ -2617,6 +2731,8 @@
             const [deliverable, setDeliverable] = useState(event?.deliverable || '');
             const [status, setStatus] = useState(event?.status || 'To Do');
             const [newCustomOwner, setNewCustomOwner] = useState('');
+            const [editingOwner, setEditingOwner] = useState(null);
+            const [editingValue, setEditingValue] = useState('');
 
             const selectedOwners = useMemo(() => {
                 return assignee ? assignee.split(',').map(a => a.trim()).filter(Boolean) : [];
@@ -2638,6 +2754,32 @@
                 onAddOwner(newCustomOwner.trim());
                 toggleOwner(newCustomOwner.trim());
                 setNewCustomOwner('');
+            };
+
+            const startRename = (owner) => {
+                setEditingOwner(owner);
+                setEditingValue(owner);
+            };
+
+            const cancelRename = () => {
+                setEditingOwner(null);
+                setEditingValue('');
+            };
+
+            // Committing unmounts the input, which fires onBlur a second time.
+            // The editingOwner guard makes that repeat call a no-op.
+            const commitRename = () => {
+                if (!editingOwner) return;
+                const target = editingOwner;
+                const next = editingValue.trim();
+                cancelRename();
+                if (!next || next === target) return;
+                onRenameOwner(target, next);
+                // The parent rewrites saved tasks; this modal's own draft
+                // assignee is local state, so it needs the same swap.
+                if (selectedOwners.includes(target)) {
+                    setAssignee(selectedOwners.map(o => (o === target ? next : o)).join(', '));
+                }
             };
 
             const handleSubmit = (e) => {
@@ -2714,24 +2856,58 @@
                             <div className="bg-white/80 border border-[#CFA07E] rounded-xl p-3 space-y-2">
                                 <label className="block text-xs font-bold text-[#5C2A14] flex items-center justify-between">
                                     <span>Assign Owners / Leads *</span>
-                                    <span className="text-2xs text-[#98573b]">Click chip to select/deselect</span>
+                                    <span className="text-2xs text-[#98573b]">Click to select · double-click to rename · × to remove</span>
                                 </label>
 
                                 <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto py-1">
                                     {teamOwners.map(owner => {
                                         const isSel = selectedOwners.includes(owner);
+
+                                        if (editingOwner === owner) {
+                                            return (
+                                                <input
+                                                    key={owner}
+                                                    autoFocus
+                                                    type="text"
+                                                    value={editingValue}
+                                                    onChange={(e) => setEditingValue(e.target.value)}
+                                                    onBlur={commitRename}
+                                                    onKeyDown={(e) => {
+                                                        // Enter would otherwise submit the surrounding task form.
+                                                        if (e.key === 'Enter') { e.preventDefault(); commitRename(); }
+                                                        else if (e.key === 'Escape') { e.preventDefault(); cancelRename(); }
+                                                    }}
+                                                    className="px-2 py-1 w-32 rounded-lg text-xs font-bold bg-white text-[#3B1F10] border border-[#C1714F] focus:outline-none"
+                                                />
+                                            );
+                                        }
+
                                         return (
-                                            <button 
+                                            <span
                                                 key={owner}
-                                                type="button"
-                                                onClick={() => toggleOwner(owner)}
-                                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
-                                                    isSel ? 'bg-[#C1714F] text-white border border-[#A85A38]' : 'bg-[#E8D4BC] text-[#3B1F10] border border-[#CFA07E] hover:bg-[#E0C9AA]'
+                                                className={`rounded-lg text-xs font-bold transition flex items-center border ${
+                                                    isSel ? 'bg-[#C1714F] text-white border-[#A85A38]' : 'bg-[#E8D4BC] text-[#3B1F10] border-[#CFA07E] hover:bg-[#E0C9AA]'
                                                 }`}
                                             >
-                                                <i className={`fa-solid ${isSel ? 'fa-check' : 'fa-plus'} text-2xs`}></i>
-                                                {owner}
-                                            </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleOwner(owner)}
+                                                    onDoubleClick={() => startRename(owner)}
+                                                    title="Click to select, double-click to rename"
+                                                    className="pl-2.5 pr-1 py-1 flex items-center gap-1"
+                                                >
+                                                    <i className={`fa-solid ${isSel ? 'fa-check' : 'fa-plus'} text-2xs`}></i>
+                                                    {owner}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onDeleteOwner(owner)}
+                                                    title={`Remove "${owner}" from the list`}
+                                                    className="pr-2 pl-1 py-1 opacity-50 hover:opacity-100"
+                                                >
+                                                    <i className="fa-solid fa-xmark text-2xs"></i>
+                                                </button>
+                                            </span>
                                         );
                                     })}
                                 </div>

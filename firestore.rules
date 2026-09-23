@@ -1,0 +1,48 @@
+rules_version = '2';
+
+// SyeLabs roadmap access control.
+//
+// This file is the ONLY place the team allowlist lives. The page has no copy of
+// it and cannot be edited to grant access. Publish it at:
+//   Firebase console -> Firestore Database -> Rules -> paste -> Publish
+//
+// Adding or removing a person is a change to allowedEmails() below plus a
+// republish. roadmap.html never needs to be touched.
+//
+// NOTE: rules are not applied until you press Publish. Editing this file alone
+// changes nothing on the server.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Lowercase addresses only - the check below lowercases the incoming token
+    // before comparing, so a capitalized entry here would never match.
+    function allowedEmails() {
+      return [
+        'annushapervez7@gmail.com'
+      ];
+    }
+
+    function isTeam() {
+      return request.auth != null
+          && request.auth.token.email_verified == true
+          && request.auth.token.email.lower() in allowedEmails();
+    }
+
+    // The shared plan document the roadmap reads and writes:
+    //   /artifacts/{appId}/public_data/plan_syelabs-master-plan
+    // Read and write are granted together on purpose. An account that can see
+    // the plan but cannot save to it produces the worst failure mode there is:
+    // the page looks like it is working while every edit stays in that one
+    // browser. Either someone is on the team or they are not.
+    match /artifacts/{appId}/public_data/{document=**} {
+      allow read, write: if isTeam();
+    }
+
+    // Everything else is denied. Firestore denies by default, but saying so
+    // keeps a future collection from inheriting the rule above by accident.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

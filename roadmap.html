@@ -699,6 +699,19 @@
             const [syncing, setSyncing] = useState(false);
             const [toast, setToast] = useState(null);
 
+            // Whether the cloud is actually reachable, tracked separately for reads
+            // and writes. The header badge used to claim "Synced" whenever a Firebase
+            // config existed, so a browser whose every write was rejected looked
+            // identical to a working one - edits piled up in localStorage and no one
+            // found out until two people compared screens.
+            //   read:  'unknown' | 'ok' | 'offline'
+            //   write: 'unknown' | 'ok' | 'denied'  (rules rejected it) | 'failed' (network)
+            const [cloudRead, setCloudRead] = useState('unknown');
+            const [cloudWrite, setCloudWrite] = useState('unknown');
+            // Last write status we already told the user about, so a debounced typing
+            // session does not fire the same toast every 800ms.
+            const reportedWriteRef = useRef('unknown');
+
             // Auth gate.
             //   'loading'  - resolving the persisted session
             //   'local'    - no Firebase config; offline local-storage mode
@@ -711,7 +724,9 @@
 
             const showToast = (msg, type = 'info') => {
                 setToast({ msg, type });
-                setTimeout(() => setToast(null), 3500);
+                // A failed save is the one message worth reading twice; the cheerful
+                // confirmations can keep flashing past at the old speed.
+                setTimeout(() => setToast(null), type === 'error' ? 9000 : 3500);
             };
 
             // Applies a plan payload (from cache or Firestore) to component state.
@@ -824,6 +839,14 @@
             const subscribeToPlanData = (pId) => {
                 const { db, appId } = window.SyeLabsFB;
                 if (!db) return;
+
+                // onAuthStateChanged can fire more than once for a single sign-in.
+                // Without this, each pass attached another snapshot listener and the
+                // duplicates raced each other's seeding writes.
+                if (unsubscribeRef.current) {
+                    unsubscribeRef.current();
+                    unsubscribeRef.current = null;
+                }
                 
                 setSyncing(true);
                 import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then((fs) => {
@@ -831,6 +854,7 @@
                     
                     const unsubscribe = fs.onSnapshot(docRef, (snap) => {
                         setSyncing(false);
+                        setCloudRead('ok');
                         setAuthState('ready');
                         if (snap.exists()) {
                             const data = snap.data();
@@ -849,7 +873,10 @@
                                 totalBudgetCap,
                                 teamOwners,
                                 updatedAt: new Date().toISOString()
-                            }).catch(err => console.warn("Firestore initial write notice:", err.message));
+                            }).catch(err => {
+                                console.warn("Firestore initial write notice:", err.message);
+                                setCloudWrite(err.code === 'permission-denied' ? 'denied' : 'failed');
+                            });
                         }
                     }, (err) => {
                         setSyncing(false);
@@ -865,6 +892,7 @@
                             }
                         } else {
                             console.warn("Firestore snapshot unavailable:", err.message);
+                            setCloudRead('offline');
                             showToast('Offline - changes are saved locally', 'info');
                         }
                     });
@@ -906,9 +934,30 @@
                         ...payload,
                         lastUpdatedBy: user.uid
                     }, { merge: true });
+                    setCloudWrite('ok');
+                    if (reportedWriteRef.current !== 'ok') {
+                        // Recovered after a stretch of local-only edits.
+                        if (reportedWriteRef.current === 'denied' || reportedWriteRef.current === 'failed') {
+                            showToast('Back online - your edits are in the shared workspace.', 'success');
+                        }
+                        reportedWriteRef.current = 'ok';
+                    }
                     return true;
                 } catch (e) {
-                    console.warn("Cloud save notice (saved locally instead):", e.message || e);
+                    console.warn("Cloud save failed (kept in this browser only):", e.message || e);
+                    // permission-denied means the server rules rejected this account,
+                    // which no amount of retrying fixes - it needs a rules change.
+                    const state = e && e.code === 'permission-denied' ? 'denied' : 'failed';
+                    setCloudWrite(state);
+                    if (reportedWriteRef.current !== state) {
+                        reportedWriteRef.current = state;
+                        showToast(
+                            state === 'denied'
+                                ? 'Not saved to the shared workspace: your account is not allowed to write. Edits are in this browser only.'
+                                : 'Could not reach the shared workspace. Edits are in this browser only.',
+                            'error'
+                        );
+                    }
                     return false;
                 } finally {
                     setSyncing(false);
@@ -1362,9 +1411,15 @@
                     {/* Toast notification */}
                     {toast && (
                         <div className={`fixed bottom-5 right-5 z-50 px-5 py-3 rounded-xl text-xs font-bold shadow-2xl flex items-center space-x-2 transition-all ${
-                            toast.type === 'success' ? 'bg-[#C1714F] text-white' : 'bg-[#3B1F10] text-[#F7F1E8]'
+                            toast.type === 'success' ? 'bg-[#C1714F] text-white'
+                                : toast.type === 'error' ? 'bg-[#B03A2E] text-white'
+                                : 'bg-[#3B1F10] text-[#F7F1E8]'
                         }`}>
-                            <i className={`fa-solid ${toast.type === 'success' ? 'fa-circle-check' : 'fa-circle-info'}`}></i>
+                            <i className={`fa-solid ${
+                                toast.type === 'success' ? 'fa-circle-check'
+                                    : toast.type === 'error' ? 'fa-triangle-exclamation'
+                                    : 'fa-circle-info'
+                            }`}></i>
                             <span>{toast.msg}</span>
                         </div>
                     )}
@@ -1409,12 +1464,33 @@
                                     >
                                         <i className="fa-solid fa-hard-drive text-[#C1714F]"></i> Local only
                                     </span>
-                                ) : (
+                                ) : cloudWrite === 'denied' ? (
+                                    <span
+                                        className="text-xs text-white font-bold flex items-center gap-1 bg-[#B03A2E] px-2.5 py-1 rounded-lg border border-[#8C2D22] whitespace-nowrap"
+                                        title="Your account is signed in and can read the plan, but the Firestore rules reject its writes. Edits are saved in this browser only and nobody else will see them. Add this address to allowedEmails() in firestore.rules and republish."
+                                    >
+                                        <i className="fa-solid fa-triangle-exclamation"></i> Not saving
+                                    </span>
+                                ) : cloudWrite === 'failed' || cloudRead === 'offline' ? (
+                                    <span
+                                        className="text-xs text-[#5C2A14] font-bold flex items-center gap-1 bg-[#E8D4BC] px-2.5 py-1 rounded-lg border border-[#B03A2E]/50 whitespace-nowrap"
+                                        title="Cannot reach the shared workspace. Edits are saved in this browser only until the connection comes back."
+                                    >
+                                        <i className="fa-solid fa-cloud-slash text-[#B03A2E]"></i> Offline
+                                    </span>
+                                ) : cloudWrite === 'ok' || cloudRead === 'ok' ? (
                                     <span
                                         className="text-xs text-[#5C2A14] font-bold flex items-center gap-1 bg-[#E8D4BC]/60 px-2.5 py-1 rounded-lg border border-[#CFA07E]/40 whitespace-nowrap"
                                         title="Synced to the shared SyeLabs workspace"
                                     >
                                         <i className="fa-solid fa-cloud-arrow-up text-[#C1714F]"></i> Synced
+                                    </span>
+                                ) : (
+                                    <span
+                                        className="text-xs text-[#5C2A14] font-bold flex items-center gap-1 bg-[#E8D4BC]/60 px-2.5 py-1 rounded-lg border border-[#CFA07E]/40 whitespace-nowrap"
+                                        title="Still establishing the connection to the shared workspace"
+                                    >
+                                        <i className="fa-solid fa-cloud text-[#98573b]"></i> Connecting
                                     </span>
                                 )}
 

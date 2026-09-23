@@ -848,6 +848,9 @@
             };
 
             const unsubscribeRef = useRef(null);
+            // Only the first server response can be a conflict with work this
+            // browser did while it was cut off; later ones are ordinary updates.
+            const firstSnapshotRef = useRef(true);
 
             // If neither a read nor a write has landed a few seconds after the app
             // is up, the listener is hung rather than slow - report it instead of
@@ -907,6 +910,23 @@
                     return ok;
                 };
 
+                // Upload the edits this browser made while it was cut off.
+                window.SyeLabsPushLocal = async () => {
+                    let cached = null;
+                    try { cached = JSON.parse(localStorage.getItem(`syelabs_plan_${planId}`) || 'null'); } catch (e) {}
+                    if (!cached) return console.error('SyeLabs: nothing cached in this browser.');
+                    console.log('SyeLabs: uploading local copy from', cached.updatedAt);
+                    const ok = await pushToCloud({ ...cached, updatedAt: new Date().toISOString() });
+                    console.log(ok ? 'SyeLabs: uploaded - everyone can see it now.' : 'SyeLabs: upload failed, nothing was lost.');
+                    return ok;
+                };
+
+                // Throw this browser's unsynced copy away and take the shared one.
+                window.SyeLabsDiscardLocal = () => {
+                    try { localStorage.removeItem(`syelabs_plan_${planId}`); } catch (e) {}
+                    console.log('SyeLabs: local copy discarded. Reload to take the shared version.');
+                };
+
                 window.SyeLabsDebug = () => ({
                     authState,
                     cloudRead,
@@ -964,8 +984,37 @@
                         setAuthState('ready');
                         if (snap.exists()) {
                             const data = snap.data();
-                            applyPlanData(data);
-                            try { localStorage.setItem(`syelabs_plan_${pId}`, JSON.stringify(data)); } catch(e){}
+
+                            // Edits made while the cloud was unreachable live only in
+                            // localStorage - they were never queued by Firestore,
+                            // because the save threw before setDoc was reached. The
+                            // first server response would overwrite that cache and
+                            // destroy the work. If this browser holds something newer
+                            // than the shared copy, keep it and let a person decide.
+                            const wasFirst = firstSnapshotRef.current;
+                            firstSnapshotRef.current = false;
+                            let cached = null;
+                            if (wasFirst) {
+                                try { cached = JSON.parse(localStorage.getItem(`syelabs_plan_${pId}`) || 'null'); } catch (e) { cached = null; }
+                            }
+                            // Both timestamps are UTC ISO strings, so they compare directly.
+                            const localIsNewer = cached && cached.updatedAt &&
+                                (!data.updatedAt || cached.updatedAt > data.updatedAt);
+
+                            if (localIsNewer) {
+                                applyPlanData(cached);
+                                console.warn(
+                                    'SyeLabs: this browser holds edits from ' + cached.updatedAt +
+                                    ', newer than the shared copy (' + (data.updatedAt || 'none') + '). ' +
+                                    'They were never uploaded. Keeping them on screen and NOT ' +
+                                    'overwriting them. Run SyeLabsPushLocal() to send them to the ' +
+                                    'shared workspace, or reload after running SyeLabsDiscardLocal().'
+                                );
+                                showToast('This browser has unsynced edits newer than the shared copy - they have been kept, not uploaded. See the console.', 'error');
+                            } else {
+                                applyPlanData(data);
+                                try { localStorage.setItem(`syelabs_plan_${pId}`, JSON.stringify(data)); } catch(e){}
+                            }
                         } else {
                             // First run against an empty project: seed the document.
                             fs.setDoc(docRef, {

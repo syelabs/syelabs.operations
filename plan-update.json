@@ -1,0 +1,349 @@
+{
+  "events": [
+    {
+      "id": "evt-1",
+      "title": "Nonprofit Registration & EIN Filing",
+      "date": "2026-09-05",
+      "category": "Legal & Org",
+      "priority": "High",
+      "assignee": "Leadership",
+      "status": "In Progress",
+      "description": "File state nonprofit entity status and secure Federal EIN number for SyeLabs.",
+      "deliverable": "Official State Registration & EIN Document"
+    },
+    {
+      "id": "evt-2",
+      "title": "Finalize Board Bylaws, Charter & FY26 Budget",
+      "date": "2026-09-23",
+      "category": "Legal & Org",
+      "priority": "High",
+      "assignee": "Leadership, Operations",
+      "status": "In Progress",
+      "description": "Define board position roles, bylaws, SyeLabs mission/vision charter, and complete organizational budget.",
+      "deliverable": "Signed SyeLabs Charter & Finance Budget"
+    },
+    {
+      "id": "evt-4",
+      "title": "State of Stack DC Conference (Sept 16-17)",
+      "date": "2026-09-16",
+      "category": "Conferences",
+      "priority": "High",
+      "assignee": "Leadership, Marketing Lead",
+      "status": "Completed",
+      "description": "Attend State of Stack DC, conduct strategic networking, represent SyeLabs, and log partner leads.",
+      "deliverable": "Event Lead Log & Conference Debrief"
+    },
+    {
+      "id": "evt-5",
+      "title": "Identify 10 Target Conferences & CFP Deadlines",
+      "date": "2026-09-22",
+      "category": "Conferences",
+      "priority": "High",
+      "assignee": "Marketing Lead",
+      "status": "In Progress",
+      "description": "Identify 10 target tech conferences (KubeCon offshoots, WWC NYC, State of Stack DC, Habibi Tech) & submit CFP proposals.",
+      "deliverable": "Conference Tracker & Submitted Proposals"
+    },
+    {
+      "id": "evt-6",
+      "title": "Build Grant Calendar & Impact Materials Deck",
+      "date": "2026-09-25",
+      "category": "Grants",
+      "priority": "High",
+      "assignee": "Grant Lead",
+      "status": "In Progress",
+      "description": "Verify grant eligibility, compile reusable impact text (\"What We Do\"), and launch the master Grant Tracker.",
+      "deliverable": "Grant Application Master Calendar & Materials"
+    },
+    {
+      "id": "evt-17",
+      "title": "Mass Open AI DC",
+      "date": "2026-09-15",
+      "category": "Legal & Org",
+      "priority": "High",
+      "assignee": "",
+      "status": "Completed",
+      "description": "Attend Mass Open AI DC conduct strategic networking, represent SyeLabs, and log partner leads.",
+      "deliverable": ""
+    },
+    {
+      "id": "evt-18",
+      "title": "State of Stack Media",
+      "date": "2026-09-28",
+      "category": "Legal & Org",
+      "priority": "High",
+      "assignee": "Tech Lead, Operations, Marketing Lead",
+      "status": "To Do",
+      "description": "Create video for SoS to be shared on Linked in - Ensure we email host - Tag host in Linkedin - Available for upcoming events",
+      "deliverable": "Linked in Interview Videos"
+    },
+    {
+      "id": "evt-19",
+      "title": "Mass Open AI DC",
+      "date": "2026-09-30",
+      "category": "Legal & Org",
+      "priority": "High",
+      "assignee": "Tech Lead, Operations, Marketing Lead",
+      "status": "To Do",
+      "description": "Create video for Mass Open AI to be shared on Linked in - Ensure we email host - Tag host in Linkedin - Available for upcoming events",
+      "deliverable": "Finished Interview Videos"
+    },
+    {
+      "id": "evt-3",
+      "title": "Establish Weekly Advisor Calls & Financial Cadence",
+      "date": "2026-10-15",
+      "category": "Scaling",
+      "priority": "Medium",
+      "assignee": "Operations",
+      "status": "To Do",
+      "description": "Set up weekly advisor call structure for outside perspectives, financial guidance, and nonprofit strategy.",
+      "deliverable": "Weekly Recurring Advisor Call Schedule"
+    },
+    {
+      "id": "evt-7",
+      "title": "Social Media Launch (YT, TikTok, IG, LinkedIn)",
+      "date": "2026-10-01",
+      "category": "Marketing",
+      "priority": "Medium",
+      "assignee": "Social Lead",
+      "status": "To Do",
+      "description": "Establish active SyeLabs brand profiles, assign active content owner, and launch social calendar.",
+      "deliverable": "Live Brand Profiles & Initial Content Rollout"
+    },
+    {
+      "id": "evt-8",
+      "title": "Mass Open AI NYC Workshop & Panel",
+      "date": "2026-10-17",
+      "category": "Conferences",
+      "priority": "High",
+      "assignee": "Content Lead, Education Lead",
+      "status": "To Do",
+      "description": "https://massopen.ai/#home - give interviews SyeLabs swag",
+      "deliverable": "Attend Mass Open AI NYC"
+    },
+    {
+      "id": "evt-9",
+      "title": "HomeLab Curriculum Build (\"It's all Connected\")",
+      "date": "2026-10-18",
+      "category": "Content",
+      "priority": "High",
+      "assignee": "Education Lead",
+      "status": "To Do",
+      "description": "Develop HomeLab workshop curriculum covering Virtualization, ISOs, and systems connectivity.",
+      "deliverable": "HomeLab Student Guidebook & Resources"
+    },
+    {
+      "id": "evt-10",
+      "title": "Outreach to Top 10 Partners (OppNet, High Schools)",
+      "date": "2026-10-14",
+      "category": "Partnerships",
+      "priority": "High",
+      "assignee": "Outreach Lead",
+      "status": "To Do",
+      "description": "Filter top 10 from 25 potential partners (OppNet, high schools, non-profits) and deliver outreach proposals.",
+      "deliverable": "10 Customized Proposals Sent"
+    },
+    {
+      "id": "evt-11",
+      "title": "Intern Onboarding Framework & University Recruitment",
+      "date": "2026-11-20",
+      "category": "Scaling",
+      "priority": "Medium",
+      "assignee": "HR / Mentorship",
+      "status": "To Do",
+      "description": "Establish intern onboarding playbooks, assign role structures, and connect with university talent networks.",
+      "deliverable": "Intern Onboarding Packet & University Pitch"
+    },
+    {
+      "id": "evt-12",
+      "title": "Merchandise & Swag Order (Caps & Giveaways)",
+      "date": "2026-12-05",
+      "category": "Marketing",
+      "priority": "Low",
+      "assignee": "Marketing Lead",
+      "status": "To Do",
+      "description": "Finalize budget approval for SyeLabs caps, merchandise, and event giveaways for upcoming workshops.",
+      "deliverable": "Approved Merch Order & Delivery Schedule"
+    },
+    {
+      "id": "evt-13",
+      "title": "Weekly Grant Submission Drive",
+      "date": "2026-12-18",
+      "category": "Grants",
+      "priority": "High",
+      "assignee": "Grant Lead",
+      "status": "To Do",
+      "description": "Maintain recurring weekly grant submission goal and update application status in master ledger.",
+      "deliverable": "4+ Submitted Grant Applications"
+    },
+    {
+      "id": "evt-14",
+      "title": "Podcast & Media Pitch Campaign (20 Podcasts)",
+      "date": "2027-01-15",
+      "category": "Media",
+      "priority": "Medium",
+      "assignee": "PR Lead",
+      "status": "To Do",
+      "description": "Pitch SyeLabs founders and key talking points to 20 relevant tech/nonprofit podcast hosts.",
+      "deliverable": "20 Pitches Delivered & Booking Tracker"
+    },
+    {
+      "id": "evt-15",
+      "title": "Non-Profit Co-Partnership Agreement",
+      "date": "2027-02-10",
+      "category": "Scaling",
+      "priority": "High",
+      "assignee": "Leadership, Outreach Lead",
+      "status": "To Do",
+      "description": "Finalize official co-hosting or resource-sharing partnership with a strategic peer non-profit.",
+      "deliverable": "Signed Non-Profit Partnership MOU"
+    },
+    {
+      "id": "evt-16",
+      "title": "For-Profit Workshop Revenue Model Blueprint",
+      "date": "2027-03-01",
+      "category": "Scaling",
+      "priority": "Medium",
+      "assignee": "Strategy",
+      "status": "To Do",
+      "description": "Design paid corporate/for-profit workshop offering to build long-term earned revenue for SyeLabs.",
+      "deliverable": "Paid Workshop Pitch Deck & Pricing Matrix"
+    }
+  ],
+  "grants": [
+    {
+      "id": "g-1",
+      "organization": "Google for Nonprofits / Tech Grant",
+      "link": "https://www.google.com/nonprofits/",
+      "amount": 10000,
+      "eligibility": "Verified 501(c)(3) status or fiscal sponsor",
+      "deadline": "2026-10-15",
+      "status": "In Progress",
+      "date": "2026-08-20",
+      "notes": "Gathering 501c3 EIN paperwork and tax exemption certificate.",
+      "initials": "GL"
+    },
+    {
+      "id": "g-2",
+      "organization": "AWS Imagine Grant (Nonprofit Tech Innovation)",
+      "link": "https://aws.amazon.com/government-education/nonprofits/aws-imagine-grant/",
+      "amount": 25000,
+      "eligibility": "US-based 501c3 tech inclusion focus",
+      "deadline": "2026-11-01",
+      "status": "Drafting",
+      "date": "2026-08-22",
+      "notes": "Drafting HomeLab architecture impact narrative.",
+      "initials": "SB"
+    },
+    {
+      "id": "g-3",
+      "organization": "Fast Forward Tech Nonprofit Accelerator",
+      "link": "https://www.ffwd.org/",
+      "amount": 25000,
+      "eligibility": "Tech-focused nonprofits with scalable curriculum",
+      "deadline": "2026-12-10",
+      "status": "Under Review",
+      "date": "2026-08-15",
+      "notes": "Submitted initial application deck & video overview.",
+      "initials": "MW"
+    },
+    {
+      "id": "g-4",
+      "organization": "Mozilla Technology & Society Grant",
+      "link": "https://foundation.mozilla.org/grants/",
+      "amount": 15000,
+      "eligibility": "Open source educational tech and hands-on labs",
+      "deadline": "2026-09-30",
+      "status": "Submitted",
+      "date": "2026-08-24",
+      "notes": "Focused on HomeLab open-source hardware kit deployment.",
+      "initials": "GL"
+    }
+  ],
+  "budgetItems": [
+    {
+      "id": "b-1",
+      "item": "Nonprofit Entity State & EIN Filing Fees",
+      "category": "Legal & Org",
+      "amount": 50,
+      "status": "Approved",
+      "notes": "One-time registration expense"
+    },
+    {
+      "id": "b-2",
+      "item": "Merchandise, Bags, Pens, Books",
+      "category": "Marketing",
+      "amount": 300,
+      "status": "Approved",
+      "notes": "For WWC NYC and State of Stack DC"
+    },
+    {
+      "id": "b-3",
+      "item": "HomeLab Hardware Equipment (Mini PCs, Switches, ISO Flash)",
+      "category": "Programs",
+      "amount": 0,
+      "status": "Approved",
+      "notes": "Curriculum lab deployment kits"
+    },
+    {
+      "id": "b-4",
+      "item": "State of Stack DC Travel Fees",
+      "category": "Conferences",
+      "amount": 100,
+      "status": "Approved",
+      "notes": "Conference registrations & travel"
+    }
+  ],
+  "totalBudgetCap": 984.55,
+  "startDate": "2026-08-30",
+  "governance": {
+    "title": "SyeLabs Charter",
+    "mission": "At SyeLabs, we’re focused on bridging the gap between where people are and what they need to move forward in tech. Whether it’s understanding a complex concept, gaining exposure to real industry environments, or simply figuring out how to navigate the tech world, we believe the right knowledge should be accessible to everyone. We break things down in a way that’s clear, digestible, and never overwhelming, so people can feel more confident and equipped in their journey. Our goal is to make tech more inviting by opening doors to information, experiences, and opportunities that aren’t always easy to access. By connecting ideas, people, and opportunities, we aim to spark real growth; not just individually, but across the community as a whole.",
+    "pillars": [
+      {
+        "title": "Mentorship — Guide & Grow",
+        "desc": "Mentorship connects people with individuals who have already navigated the paths they are trying to understand. SyeLabs can use mentorship to provide practical career guidance, technical perspective, industry access, and personal encouragement."
+      },
+      {
+        "title": "Home Labs — Build & Experiment (Learn and Execute)",
+        "desc": "Home Labs turn knowledge into hands-on experience. They provide accessible environments where people can experiment with technologies, practice real skills, troubleshoot problems, and build confidence without needing enterprise-level resources."
+      },
+      {
+        "title": "Conferences (Networking)",
+        "desc": "Conferences provide a window into the real technology industry. SyeLabs helps people understand not only what happens on stage, but what happens between the sessions: the conversations, networking, workshops, career opportunities, and relationships that make conferences valuable."
+      }
+    ],
+    "roles": [
+      {
+        "title": "Executive Lead",
+        "tag": "Mentorship",
+        "desc": "Purpose: Provide overall leadership, direction, and accountability for SyeLabs. The Executive Lead ensures that the organization remains aligned with its mission and that the different teams work toward a common vision. Responsibilities: Define and communicate SyeLabs' strategic direction Maintain the organization's mission, vision, and values Set organizational priorities and goals Make final decisions on major organizational matters Build relationships with industry leaders and external organizations Represent SyeLabs publicly when appropriate Oversee major partnerships and strategic initiatives Support and coordinate the other leadership positions Ensure accountability across the leadership team Plan for the long-term growth and sustainability of SyeLabs"
+      },
+      {
+        "title": "Content & Communications Lead",
+        "tag": "Events",
+        "desc": "Purpose: Tell the SyeLabs story and make knowledge and experiences accessible to the community. The Content Lead transforms conferences, Home Labs, mentorship, and community experiences into useful content. Responsibilities: Develop the SyeLabs content strategy Create and manage written, video, and social content Cover conferences and community events Develop interviews and conversations with technology professionals Highlight Home Lab projects and technical experiences Work with the Technical Lead on educational content Maintain SyeLabs' voice and messaging Manage the content calendar Coordinate contributors and content creators Ensure content is accurate, accessible, and aligned with SyeLabs' mission Measure content engagement and use feedback to improve future content"
+      },
+      {
+        "title": "Operation & Financial Lead",
+        "tag": "Finance",
+        "desc": "Purpose: Make sure SyeLabs' people, programs, and activities operate effectively. Operations turns the organization's plans into organized, repeatable processes. Responsibilities: Coordinate organizational activities and schedules Maintain internal processes and documentation Coordinate meetings and leadership workflows Track projects, deadlines, and deliverables Support conference and community logistics Coordinate volunteers and contributors Manage organizational resources Develop operating procedures Maintain internal communication and accountability Identify operational problems and improve processes Support planning for events and initiatives"
+      },
+      {
+        "title": "Technical Lead",
+        "tag": "Leadership",
+        "desc": "Purpose: Lead SyeLabs' technical direction and hands-on learning initiatives. The Technical Lead owns the technical quality and development of the Home Lab program while supporting the technical aspects of SyeLabs' broader initiatives. Responsibilities: Define the technical direction of Home Labs Design and maintain lab environments Develop hands-on technical projects Research and evaluate technologies Create technical documentation and learning resources Establish technical standards and best practices Review technical content for accuracy Support technical workshops and demonstrations Mentor technical contributors Encourage experimentation and knowledge sharing Collaborate with the Content Lead to turn technical work into accessible contents and responsibilities."
+      }
+    ],
+    "agreements": [
+      "Time Commitment: Dedicated 3–5 hours per month to council duties and deliverables.",
+      "Responsiveness: Acknowledge and respond to council communications within 24–48 hours.",
+      "Attendance Policy: Automatic review/dismissal after 3 consecutive unexcused meeting absences."
+    ],
+    "cadence": [
+      "Weekly Syncs: 2 1-hour weekly virtual meetings",
+      "Decision Voting: Decisions determined by democratic majority vote.",
+      "Action Items: Summarized at meeting close and distributed within 24 hours with agenda setting for next call."
+    ]
+  }
+}

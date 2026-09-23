@@ -142,7 +142,9 @@
             getAuth, GoogleAuthProvider, signInWithPopup, signOut,
             onAuthStateChanged, setPersistence, browserLocalPersistence
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import {
+            getFirestore, doc, onSnapshot, setDoc, getDoc
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ---------------------------------------------------------------------
         // SyeLabs Firebase configuration.
@@ -187,6 +189,17 @@
             // or fall back to the offline, local-storage-only experience.
             configured: !!resolvedConfig,
 
+            // The Firestore functions, loaded here and handed over ready to use.
+            //
+            // The app lives in a text/babel script block, which Babel
+            // Standalone compiles with its module transform - that rewrites a
+            // dynamic import() into require(), and there is no require() in a
+            // browser. So every attempt by the app to load this SDK itself threw
+            // "require is not defined", which killed the snapshot listener and
+            // every cloud write while leaving localStorage working. This script
+            // is a real ES module, so its imports are native and simply work.
+            fs: { doc, onSnapshot, setDoc, getDoc },
+
             init: function(onAuthChange) {
                 if (!resolvedConfig) {
                     console.info(
@@ -199,6 +212,7 @@
 
                 try {
                     const app  = initializeApp(resolvedConfig);
+
                     const db   = getFirestore(app);
                     const auth = getAuth(app);
 
@@ -763,9 +777,14 @@
                 FB.init((usr) => {
                     setAuthUser(usr);
                     if (usr) {
-                        // Optimistically show the cache while Firestore confirms access.
-                        loadLocalCache();
-                        setAuthState('ready');
+                        // 'verifying', not 'ready': any Google account can sign in, so
+                        // a successful sign-in says nothing about authorization. This
+                        // used to render the whole roadmap - including the baseline
+                        // plan compiled into this page - to anyone with a Google
+                        // account, and only ejected them if a permission-denied came
+                        // back. A hung listener meant it never did. The first
+                        // successful read is what promotes them to 'ready'.
+                        setAuthState('verifying');
                         subscribeToPlanData(planId);
                     } else {
                         setAuthState('signedout');
@@ -830,6 +849,78 @@
 
             const unsubscribeRef = useRef(null);
 
+            // If neither a read nor a write has landed a few seconds after the app
+            // is up, the listener is hung rather than slow - report it instead of
+            // leaving the badge on "Connecting" indefinitely.
+            useEffect(() => {
+                if (authState !== 'verifying') return;
+                const t = setTimeout(() => {
+                    console.error(
+                        'SyeLabs: could not confirm access in 12s - Firestore never ' +
+                        'answered. Failing closed. Usually a blocked connection to ' +
+                        'firestore.googleapis.com (network, VPN, or an extension).'
+                    );
+                    setCloudRead('offline');
+                    setAuthState('unverified');
+                }, 12000);
+                return () => clearTimeout(t);
+            }, [authState]);
+
+            // Firestore rejects a document containing `undefined` anywhere in it,
+            // and it throws on the spot rather than returning an error - so a single
+            // stray field silently blocks every save of the whole plan. Report the
+            // exact path so it is fixable instead of mysterious.
+            const findUndefined = (value, path = '') => {
+                if (value === undefined) return path || '(root)';
+                if (value === null || typeof value !== 'object') return null;
+                if (Array.isArray(value)) {
+                    for (let i = 0; i < value.length; i++) {
+                        const hit = findUndefined(value[i], `${path}[${i}]`);
+                        if (hit) return hit;
+                    }
+                    return null;
+                }
+                for (const k of Object.keys(value)) {
+                    const hit = findUndefined(value[k], path ? `${path}.${k}` : k);
+                    if (hit) return hit;
+                }
+                return null;
+            };
+
+            // One-line state dump for diagnosing sync problems from the console.
+            useEffect(() => {
+                // Runs the real save path and reports exactly why it fails.
+                window.SyeLabsTestSave = async () => {
+                    const payload = buildPlanPayload();
+                    const bad = findUndefined(payload);
+                    console.log('TESTSAVE payload keys:', Object.keys(payload).join(', '));
+                    console.log('TESTSAVE size:', JSON.stringify(payload).length, 'bytes');
+                    console.log('TESTSAVE undefined field:', bad || 'none');
+                    console.log('TESTSAVE counts:', {
+                        events: (payload.events || []).length,
+                        grants: (payload.grants || []).length,
+                        budgetItems: (payload.budgetItems || []).length,
+                        curriculumItems: (payload.curriculumItems || []).length
+                    });
+                    const ok = await pushToCloud(payload);
+                    console.log('TESTSAVE pushToCloud returned:', ok);
+                    return ok;
+                };
+
+                window.SyeLabsDebug = () => ({
+                    authState,
+                    cloudRead,
+                    cloudWrite,
+                    syncing,
+                    signedInAs: window.SyeLabsFB.user ? window.SyeLabsFB.user.email : null,
+                    configured: window.SyeLabsFB.configured,
+                    hasDb: !!window.SyeLabsFB.db,
+                    listenerAttached: !!unsubscribeRef.current,
+                    docPath: `artifacts/${window.SyeLabsFB.appId}/public_data/plan_${planId}`,
+                    localCacheBytes: (localStorage.getItem(`syelabs_plan_${planId}`) || '').length
+                });
+            }, [authState, cloudRead, cloudWrite, syncing, planId]);
+
             useEffect(() => {
                 return () => {
                     if (unsubscribeRef.current) unsubscribeRef.current();
@@ -838,7 +929,13 @@
 
             const subscribeToPlanData = (pId) => {
                 const { db, appId } = window.SyeLabsFB;
-                if (!db) return;
+                if (!db) {
+                    // Firebase init threw earlier. Nothing will ever sync, so say so
+                    // rather than sitting on "Connecting" forever.
+                    console.error('SyeLabs: Firestore unavailable - Firebase never initialized.');
+                    setCloudRead('offline');
+                    return;
+                }
 
                 // onAuthStateChanged can fire more than once for a single sign-in.
                 // Without this, each pass attached another snapshot listener and the
@@ -849,12 +946,21 @@
                 }
                 
                 setSyncing(true);
-                import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js").then((fs) => {
+                const fs = window.SyeLabsFB.fs;
+                if (!fs) {
+                    console.error('SyeLabs: Firestore functions unavailable - the module script did not run.');
+                    setSyncing(false);
+                    setCloudRead('offline');
+                    return;
+                }
+
+                {
                     const docRef = fs.doc(db, 'artifacts', appId, 'public_data', `plan_${pId}`);
-                    
+
                     const unsubscribe = fs.onSnapshot(docRef, (snap) => {
                         setSyncing(false);
                         setCloudRead('ok');
+                        // The read succeeded, so the rules accepted this account.
                         setAuthState('ready');
                         if (snap.exists()) {
                             const data = snap.data();
@@ -884,7 +990,9 @@
                         // server, so a rejected read is how we learn this account is not
                         // authorized. Anything else is a genuine connectivity problem.
                         if (err.code === 'permission-denied') {
+                            console.warn('SyeLabs: Firestore rejected the read (rules).', err.message);
                             try { localStorage.removeItem(`syelabs_plan_${pId}`); } catch(e){}
+                            setCloudRead('offline');
                             // Only a signed-in account can be denied. With no user
                             // this is the tail of a sign-out, not a rejection.
                             if (window.SyeLabsFB.user) {
@@ -898,7 +1006,7 @@
                     });
 
                     unsubscribeRef.current = unsubscribe;
-                }).catch(err => setSyncing(false));
+                }
             };
 
             const buildPlanPayload = (updatedEvents, updatedGrants, updatedBudget, updatedCurriculum, newTitle, newStartDate, newBudgetCap, newOwners, updatedGovernance) => ({
@@ -926,14 +1034,7 @@
                 const { db, appId, user } = window.SyeLabsFB;
                 if (!db || !user) return false;
 
-                try {
-                    setSyncing(true);
-                    const fs = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                    const docRef = fs.doc(db, 'artifacts', appId, 'public_data', `plan_${planId}`);
-                    await fs.setDoc(docRef, {
-                        ...payload,
-                        lastUpdatedBy: user.uid
-                    }, { merge: true });
+                const markWritten = () => {
                     setCloudWrite('ok');
                     if (reportedWriteRef.current !== 'ok') {
                         // Recovered after a stretch of local-only edits.
@@ -942,9 +1043,57 @@
                         }
                         reportedWriteRef.current = 'ok';
                     }
+                };
+
+                try {
+                    setSyncing(true);
+                    const fs = window.SyeLabsFB.fs;
+                    const docRef = fs.doc(db, 'artifacts', appId, 'public_data', `plan_${planId}`);
+                    const write = fs.setDoc(docRef, {
+                        ...payload,
+                        lastUpdatedBy: user.uid
+                    }, { merge: true });
+
+                    // Firestore queues writes while it is offline and leaves this
+                    // promise pending - not rejected - until the server acknowledges.
+                    // Awaiting it alone parked the badge on "Syncing" forever, which
+                    // read as "in progress" when nothing was moving. Give the spinner
+                    // a deadline. The write itself is deliberately left running: the
+                    // SDK still delivers it on reconnect, so the edit is not dropped.
+                    const PENDING_MS = 8000;
+                    const outcome = await Promise.race([
+                        write.then(() => 'ok', (e) => e),
+                        new Promise(r => setTimeout(() => r('pending'), PENDING_MS))
+                    ]);
+
+                    if (outcome === 'pending') {
+                        console.warn('SyeLabs: write still unacknowledged after 8s - queued for reconnect.');
+                        setCloudWrite('failed');
+                        if (reportedWriteRef.current !== 'failed') {
+                            reportedWriteRef.current = 'failed';
+                            showToast('Cannot reach the shared workspace. Your edit is queued and will send when the connection returns.', 'error');
+                        }
+                        // Report it if the queued write does eventually land.
+                        write.then(markWritten).catch(() => {});
+                        return false;
+                    }
+                    if (outcome !== 'ok') throw outcome;
+
+                    markWritten();
                     return true;
                 } catch (e) {
-                    console.warn("Cloud save failed (kept in this browser only):", e.message || e);
+                    console.error("SyeLabs: cloud save failed (kept in this browser only):", e && e.code, e && e.message || e);
+                    // An invalid document is rejected locally by the SDK before any
+                    // network call. Reporting that as "could not reach the workspace"
+                    // sent us looking at rules and connectivity for a data problem.
+                    const bad = findUndefined(payload);
+                    if (bad) {
+                        console.error(
+                            `SyeLabs: the plan contains an undefined value at "${bad}". ` +
+                            'Firestore refuses the whole document for this, so every save ' +
+                            'fails until that field has a real value.'
+                        );
+                    }
                     // permission-denied means the server rules rejected this account,
                     // which no amount of retrying fixes - it needs a rules change.
                     const state = e && e.code === 'permission-denied' ? 'denied' : 'failed';
@@ -1340,19 +1489,20 @@
 
             // ---- Auth gate -------------------------------------------------
             // Rendered instead of the app until the account is known and authorized.
-            if (authState === 'loading') {
+            if (authState === 'loading' || authState === 'verifying') {
                 return (
                     <div className="min-h-screen flex items-center justify-center">
                         <div className="text-center">
                             <i className="fa-solid fa-spinner fa-spin text-3xl text-[#C1714F]"></i>
-                            <p className="text-sm font-bold text-[#5C2A14] mt-4">Checking your access\u2026</p>
+                            <p className="text-sm font-bold text-[#5C2A14] mt-4">Checking your access…</p>
                         </div>
                     </div>
                 );
             }
 
-            if (authState === 'signedout' || authState === 'denied') {
-                const denied = authState === 'denied';
+            if (authState === 'signedout' || authState === 'denied' || authState === 'unverified') {
+                const denied = authState === 'denied' || authState === 'unverified';
+                const unverified = authState === 'unverified';
                 return (
                     <div className="min-h-screen flex items-center justify-center p-4">
                         <div className="glass-panel rounded-2xl p-8 sm:p-10 max-w-md w-full text-center">
@@ -1367,12 +1517,22 @@
 
                             {denied ? (
                                 <>
-                                    <h2 className="text-lg font-extrabold text-[#3B1F10] mb-2">You don't have access</h2>
+                                    <h2 className="text-lg font-extrabold text-[#3B1F10] mb-2">
+                                        {unverified ? "Couldn't confirm your access" : "You don't have access"}
+                                    </h2>
                                     <p className="text-xs text-[#5C2A14] leading-relaxed mb-6">
-                                        {authUser?.email
-                                            ? <><strong className="font-bold">{authUser.email}</strong> is not on the SyeLabs allowlist. </>
-                                            : 'This account is not on the SyeLabs allowlist. '}
-                                        Ask a council co-chair to add this address, then sign in again.
+                                        {unverified ? (
+                                            <>Couldn&apos;t reach the SyeLabs workspace to check whether{' '}
+                                            {authUser?.email ? <strong className="font-bold">{authUser.email}</strong> : 'this account'}{' '}
+                                            is on the allowlist, so access is refused until it can. Check your
+                                            connection and reload - a VPN or privacy extension blocking
+                                            firestore.googleapis.com is the usual cause.</>
+                                        ) : (
+                                            <>{authUser?.email
+                                                ? <><strong className="font-bold">{authUser.email}</strong> is not on the SyeLabs allowlist. </>
+                                                : 'This account is not on the SyeLabs allowlist. '}
+                                            Ask a council co-chair to add this address, then sign in again.</>
+                                        )}
                                     </p>
                                     <button
                                         onClick={() => handleSignOut()}

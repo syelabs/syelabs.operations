@@ -1,46 +1,55 @@
 rules_version = '2';
 
-// SyeLabs roadmap access control.
+// SyeLabs Roadmap & Operations Hub - Firestore security rules.
 //
-// This file is the ONLY place the team allowlist lives. The page has no copy of
-// it and cannot be edited to grant access. Publish it at:
-//   Firebase console -> Firestore Database -> Rules -> paste -> Publish
+// This file is the ONLY thing standing between the public internet and the
+// SyeLabs grant ledger, budget, and governance charter. The Firebase config in
+// roadmap.html is public by design and protects nothing; these rules run on
+// Google's servers and cannot be bypassed by editing the page.
 //
-// Adding or removing a person is a change to allowedEmails() below plus a
-// republish. roadmap.html never needs to be touched.
+// Deploy:  firebase deploy --only firestore:rules
+// Or paste into: Firebase console -> Firestore Database -> Rules -> Publish
 //
-// NOTE: rules are not applied until you press Publish. Editing this file alone
-// changes nothing on the server.
+// ---------------------------------------------------------------------------
+// TO ADD OR REMOVE A TEAMMATE: edit the list in allowedEmails() below, then
+// redeploy. Nothing in roadmap.html needs to change.
+// ---------------------------------------------------------------------------
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Lowercase addresses only - the check below lowercases the incoming token
-    // before comparing, so a capitalized entry here would never match.
+    // The SyeLabs allowlist. Lowercase only - see isTeam() for why.
     function allowedEmails() {
       return [
         'annushapervez7@gmail.com'
+         ,'annushapervez127@gmail.com'
+        ,'syelabs.thrivetogether@gmail.com'
+        ,'fatemakib6@gmail.com'
+        ,'syedahabib09@gmail.com'
+        ,'israeldavid998@gmail.com'
       ];
     }
 
     function isTeam() {
+      // request.auth is null for signed-out visitors.
+      // token.email_verified rejects unverified addresses, which stops someone
+      // registering an unverified account claiming a listed address.
+      // The email is lowercased because Google returns the address as typed.
       return request.auth != null
-          && request.auth.token.email_verified == true
-          && request.auth.token.email.lower() in allowedEmails();
+             && request.auth.token.email != null
+             && request.auth.token.email_verified == true
+             && allowedEmails().hasAny([request.auth.token.email.lower()]);
     }
 
-    // The shared plan document the roadmap reads and writes:
-    //   /artifacts/{appId}/public_data/plan_syelabs-master-plan
-    // Read and write are granted together on purpose. An account that can see
-    // the plan but cannot save to it produces the worst failure mode there is:
-    // the page looks like it is working while every edit stays in that one
-    // browser. Either someone is on the team or they are not.
-    match /artifacts/{appId}/public_data/{document=**} {
+    // The single shared plan document the app reads and writes:
+    //   artifacts/{appId}/public_data/plan_{planId}
+    match /artifacts/{appId}/public_data/{planDoc} {
       allow read, write: if isTeam();
     }
 
-    // Everything else is denied. Firestore denies by default, but saying so
-    // keeps a future collection from inheriting the rule above by accident.
+    // Everything else in the project is denied. Without this a future collection
+    // would silently inherit no rule and be unreachable rather than exposed, but
+    // stating it makes the intent explicit.
     match /{document=**} {
       allow read, write: if false;
     }

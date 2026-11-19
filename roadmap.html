@@ -126,6 +126,15 @@
             box-shadow: 0 4px 20px -2px rgba(59, 31, 16, 0.05);
         }
 
+        /* Calendar events: a cool slate-teal so they read as distinct from
+           the warm terracotta milestone tasks. */
+        .cal-event-bar {
+            background-color: #2F6F73;
+        }
+        .cal-event-bar:hover {
+            background-color: #24585C;
+        }
+
         .glass-panel-subtle {
             background: rgba(242, 232, 217, 0.85);
             backdrop-filter: blur(8px);
@@ -665,6 +674,18 @@
             ]
         };
 
+        // Process tags. Categories are created by the team, not hard-coded;
+        // processes saved before tags existed carried a single `category`.
+        const processTags = (p) => Array.isArray(p.tags) ? p.tags : (p.category ? [p.category] : []);
+        const PROCESS_STATUS_STYLES = {
+            'Active': 'bg-green-100 text-green-800 border-green-200',
+            'Draft': 'bg-amber-100 text-amber-800 border-amber-200',
+            'Archived': 'bg-[#E8D4BC] text-[#5C2A14] border-[#CFA07E]'
+        };
+
+        // Only http(s) links are rendered as clickable - blocks javascript: URLs.
+        const safeHref = (url) => /^https?:\/\//i.test((url || '').trim()) ? url.trim() : null;
+
         function SyeLabsApp() {
             const [planId] = useState('syelabs-master-plan');
             // True when sign-out was halted because an edit could not be saved.
@@ -673,7 +694,7 @@
             const [startDate, setStartDate] = useState(() => toLocalISODate());
             
             // Core Navigation Tabs
-            const [mainTab, setMainTab] = useState('plan'); // 'plan', 'grants', 'governance', 'curriculum'
+            const [mainTab, setMainTab] = useState('plan'); // 'plan', 'grants', 'governance', 'processes', 'curriculum'
             const [curriculumTrack, setCurriculumTrack] = useState('homelabs'); // 'homelabs', 'conferences', 'mentorship'
 
             // Data States
@@ -684,6 +705,18 @@
             const [governance, setGovernance] = useState(DEFAULT_GOVERNANCE);
             const [totalBudgetCap, setTotalBudgetCap] = useState(15000);
             const [teamOwners, setTeamOwners] = useState(DEFAULT_TEAM_OWNERS);
+            // Calendar events (meetings, conferences, trips) - separate from
+            // milestone tasks. They can span several days and render as bars
+            // across the Month Grid, Google Calendar style.
+            const [calendarEvents, setCalendarEvents] = useState([]);
+            // Processes: SOPs, onboarding guides, blog workflows, templates.
+            const [processes, setProcesses] = useState([]);
+            const [processCategory, setProcessCategory] = useState('All');
+            // Team-defined categories that processes can be tagged with.
+            const [processCategories, setProcessCategories] = useState([]);
+            const [processSearch, setProcessSearch] = useState('');
+            const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
+            const [editingProcess, setEditingProcess] = useState(null);
             
             const [currentMonth, setCurrentMonth] = useState(new Date());
             const [timelineBaseDate, setTimelineBaseDate] = useState(() => localDateFromISO(PLAN_LAUNCH_DATE));
@@ -703,6 +736,12 @@
             const [editingCurriculum, setEditingCurriculum] = useState(null);
 
             const [isGovernanceModalOpen, setIsGovernanceModalOpen] = useState(false);
+
+            const [isCalEventModalOpen, setIsCalEventModalOpen] = useState(false);
+            const [editingCalEvent, setEditingCalEvent] = useState(null);
+            // Date string of the Month Grid day that was clicked, while the
+            // "task or event?" chooser is open.
+            const [dayChooserDate, setDayChooserDate] = useState(null);
 
             // Filters
             const [filterSearch, setFilterSearch] = useState('');
@@ -755,6 +794,9 @@
                 if (data.governance) setGovernance(data.governance);
                 if (data.totalBudgetCap !== undefined) setTotalBudgetCap(data.totalBudgetCap);
                 if (data.teamOwners) setTeamOwners(data.teamOwners);
+                if (data.calendarEvents) setCalendarEvents(data.calendarEvents);
+                if (data.processes) setProcesses(data.processes);
+                if (data.processCategories) setProcessCategories(data.processCategories);
             };
 
             const loadLocalCache = () => {
@@ -1027,6 +1069,9 @@
                                 governance,
                                 totalBudgetCap,
                                 teamOwners,
+                                calendarEvents,
+                                processes,
+                                processCategories,
                                 updatedAt: new Date().toISOString()
                             }).catch(err => {
                                 console.warn("Firestore initial write notice:", err.message);
@@ -1058,7 +1103,7 @@
                 }
             };
 
-            const buildPlanPayload = (updatedEvents, updatedGrants, updatedBudget, updatedCurriculum, newTitle, newStartDate, newBudgetCap, newOwners, updatedGovernance) => ({
+            const buildPlanPayload = (updatedEvents, updatedGrants, updatedBudget, updatedCurriculum, newTitle, newStartDate, newBudgetCap, newOwners, updatedGovernance, updatedCalEvents, updatedProcesses, updatedProcessCategories) => ({
                 planTitle: newTitle !== undefined ? newTitle : planTitle,
                 startDate: newStartDate !== undefined ? newStartDate : startDate,
                 events: updatedEvents !== undefined ? updatedEvents : events,
@@ -1068,6 +1113,9 @@
                 governance: updatedGovernance !== undefined ? updatedGovernance : governance,
                 totalBudgetCap: newBudgetCap !== undefined ? newBudgetCap : totalBudgetCap,
                 teamOwners: newOwners !== undefined ? newOwners : teamOwners,
+                calendarEvents: updatedCalEvents !== undefined ? updatedCalEvents : calendarEvents,
+                processes: updatedProcesses !== undefined ? updatedProcesses : processes,
+                processCategories: updatedProcessCategories !== undefined ? updatedProcessCategories : processCategories,
                 updatedAt: new Date().toISOString()
             });
 
@@ -1392,6 +1440,117 @@
                 setIsModalOpen(false);
                 setEditingEvent(null);
             };
+
+            const handleSaveCalEvent = (data) => {
+                let updated;
+                if (editingCalEvent && editingCalEvent.id) {
+                    updated = calendarEvents.map(c => c.id === editingCalEvent.id ? { ...c, ...data } : c);
+                    showToast('Event updated!', 'success');
+                } else {
+                    updated = [...calendarEvents, { ...data, id: 'cal-' + Date.now() }];
+                    showToast('Event added to the calendar!', 'success');
+                }
+                setCalendarEvents(updated);
+                savePlanToCloud(events, grants, budgetItems, curriculumItems, planTitle, startDate, totalBudgetCap, teamOwners, governance, updated);
+                setIsCalEventModalOpen(false);
+                setEditingCalEvent(null);
+            };
+
+            const handleDeleteCalEvent = (id) => {
+                const updated = calendarEvents.filter(c => c.id !== id);
+                setCalendarEvents(updated);
+                savePlanToCloud(events, grants, budgetItems, curriculumItems, planTitle, startDate, totalBudgetCap, teamOwners, governance, updated);
+                showToast('Event removed', 'info');
+                setIsCalEventModalOpen(false);
+                setEditingCalEvent(null);
+            };
+
+            const handleSaveProcess = (data) => {
+                const stamped = { ...data, updatedAt: new Date().toISOString() };
+                // Tags typed in the modal that are new become team categories.
+                const newCats = (data.tags || []).filter(t => !processCategories.includes(t));
+                const updatedCats = newCats.length ? [...processCategories, ...newCats] : processCategories;
+                if (newCats.length) setProcessCategories(updatedCats);
+                let updated;
+                if (editingProcess && editingProcess.id) {
+                    updated = processes.map(p => {
+                        if (p.id !== editingProcess.id) return p;
+                        const { category, ...rest } = p;   // superseded by tags
+                        return { ...rest, ...stamped };
+                    });
+                    showToast('Process updated!', 'success');
+                } else {
+                    updated = [...processes, { ...stamped, id: 'proc-' + Date.now() }];
+                    showToast('Process added to the library!', 'success');
+                }
+                setProcesses(updated);
+                savePlanToCloud(events, grants, budgetItems, curriculumItems, planTitle, startDate, totalBudgetCap, teamOwners, governance, calendarEvents, updated, updatedCats);
+                setIsProcessModalOpen(false);
+                setEditingProcess(null);
+            };
+
+            // Deleting a category also strips it from every process tagged with it.
+            const handleDeleteProcessCategory = (cat) => {
+                const updatedCats = processCategories.filter(c => c !== cat);
+                const updatedProcs = processes.map(p => {
+                    const tags = processTags(p);
+                    if (!tags.includes(cat)) return p;
+                    const { category, ...rest } = p;
+                    return { ...rest, tags: tags.filter(t => t !== cat) };
+                });
+                setProcessCategories(updatedCats);
+                setProcesses(updatedProcs);
+                if (processCategory === cat) setProcessCategory('All');
+                savePlanToCloud(events, grants, budgetItems, curriculumItems, planTitle, startDate, totalBudgetCap, teamOwners, governance, calendarEvents, updatedProcs, updatedCats);
+                showToast(`Category "${cat}" deleted.`, 'info');
+            };
+
+            const handleAddProcessCategory = (cat) => {
+                const name = cat.trim();
+                if (!name || processCategories.includes(name)) return;
+                const updatedCats = [...processCategories, name];
+                setProcessCategories(updatedCats);
+                savePlanToCloud(events, grants, budgetItems, curriculumItems, planTitle, startDate, totalBudgetCap, teamOwners, governance, calendarEvents, processes, updatedCats);
+            };
+
+            const handleDeleteProcess = (id) => {
+                const updated = processes.filter(p => p.id !== id);
+                setProcesses(updated);
+                savePlanToCloud(events, grants, budgetItems, curriculumItems, planTitle, startDate, totalBudgetCap, teamOwners, governance, calendarEvents, updated);
+                showToast('Process removed', 'info');
+                setIsProcessModalOpen(false);
+                setEditingProcess(null);
+            };
+
+            const filteredProcesses = useMemo(() => {
+                const q = processSearch.toLowerCase();
+                return processes
+                    .filter(p => processCategory === 'All' || processTags(p).includes(processCategory))
+                    .filter(p => !q ||
+                        (p.title || '').toLowerCase().includes(q) ||
+                        processTags(p).some(t => t.toLowerCase().includes(q)) ||
+                        (p.summary || '').toLowerCase().includes(q) ||
+                        (p.owner || '').toLowerCase().includes(q) ||
+                        (p.steps || []).some(st => st.toLowerCase().includes(q)))
+                    .sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+            }, [processes, processCategory, processSearch]);
+
+            const openNewCalEvent = (dateStr) => {
+                setEditingCalEvent({ startDate: dateStr, endDate: dateStr });
+                setIsCalEventModalOpen(true);
+            };
+
+            // Calendar events only respond to the search box: they have no
+            // owner, and their span makes a single-month filter misleading.
+            const filteredCalEvents = useMemo(() => {
+                const q = filterSearch.toLowerCase();
+                return calendarEvents.filter(c =>
+                    !q ||
+                    (c.title || '').toLowerCase().includes(q) ||
+                    (c.description || '').toLowerCase().includes(q) ||
+                    (c.location || '').toLowerCase().includes(q)
+                );
+            }, [calendarEvents, filterSearch]);
 
             const handleSaveGrant = (grantData) => {
                 let updated;
@@ -1770,6 +1929,15 @@
                             </button>
 
                             <button 
+                                onClick={() => setMainTab('processes')}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+                                    mainTab === 'processes' ? 'bg-[#3B1F10] text-[#F7F1E8] shadow' : 'text-[#5C2A14] hover:bg-[#E8D4BC]/60'
+                                }`}
+                            >
+                                <i className="fa-solid fa-diagram-project text-[#C1714F]"></i> Processes
+                            </button>
+
+                            <button 
                                 onClick={() => setMainTab('curriculum')}
                                 className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
                                     mainTab === 'curriculum' ? 'bg-[#3B1F10] text-[#F7F1E8] shadow' : 'text-[#5C2A14] hover:bg-[#E8D4BC]/60'
@@ -2035,7 +2203,7 @@
                                             <h3 className="text-lg sm:text-xl font-extrabold text-[#3B1F10]">
                                                 {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                                             </h3>
-                                            <div className="flex items-center space-x-2">
+                                            <div className="flex items-center flex-wrap gap-2 justify-end">
                                                 <button 
                                                     onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
                                                     className="bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] p-2 rounded-xl transition text-xs font-bold"
@@ -2064,64 +2232,151 @@
                                             ))}
                                         </div>
 
-                                        {/* Month Cells Grid */}
-                                        <div className="grid grid-cols-7 gap-2">
+                                        {/* Month Cells Grid - one row per week so multi-day
+                                            events can be drawn as bars across the row. */}
+                                        <div className="space-y-2">
                                             {(() => {
                                                 const year = currentMonth.getFullYear();
                                                 const month = currentMonth.getMonth();
                                                 const firstDay = new Date(year, month, 1).getDay();
                                                 const daysInMonth = new Date(year, month + 1, 0).getDate();
-                                                
-                                                const cells = [];
-                                                for (let i = 0; i < firstDay; i++) {
-                                                    cells.push(<div key={`empty-${i}`} className="min-h-[150px] bg-white/30 rounded-xl"></div>);
-                                                }
+                                                const todayStr = toLocalISODate();
 
+                                                // Day slots: null for the padding before the 1st / after the last.
+                                                const slots = [];
+                                                for (let i = 0; i < firstDay; i++) slots.push(null);
                                                 for (let d = 1; d <= daysInMonth; d++) {
-                                                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                                                    const dayEvents = filteredEvents.filter(e => e.date === dateStr);
-                                                    const isToday = toLocalISODate() === dateStr;
+                                                    slots.push({ d, dateStr: `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}` });
+                                                }
+                                                while (slots.length % 7 !== 0) slots.push(null);
 
-                                                    cells.push(
-                                                        <div 
-                                                            key={d} 
-                                                            onClick={() => {
-                                                                setEditingEvent({ date: dateStr });
-                                                                setIsModalOpen(true);
-                                                            }}
-                                                            className={`min-h-[150px] p-2 rounded-xl border transition flex flex-col justify-between cursor-pointer ${
-                                                                isToday ? 'bg-[#F2E8D9] border-[#C1714F] border-2 shadow-sm' : 'bg-white/90 border-[#E0C9AA] hover:border-[#C1714F]'
-                                                            }`}
-                                                        >
-                                                            <div className="flex items-center justify-between mb-1">
-                                                                <span className={`text-xs font-extrabold ${isToday ? 'text-[#C1714F]' : 'text-[#3B1F10]'}`}>{d}</span>
-                                                                {dayEvents.length > 0 && (
-                                                                    <span className="text-2xs bg-[#C1714F] text-white font-bold px-1.5 py-0.5 rounded-full">
-                                                                        {dayEvents.length}
-                                                                    </span>
-                                                                )}
-                                                            </div>
+                                                const weeks = [];
+                                                for (let i = 0; i < slots.length; i += 7) weeks.push(slots.slice(i, i + 7));
 
-                                                            <div className="space-y-1 overflow-y-auto max-h-[105px]">
-                                                                {dayEvents.map(evt => (
-                                                                    <div 
-                                                                        key={evt.id}
+                                                const LANE_H = 22;   // px per event bar row
+                                                const BAR_TOP = 33;  // px below the cell top: padding + day-number row
+                                                // Column geometry for grid-cols-7 with gap-2 (0.5rem).
+                                                const colLeft = (c) => `calc(${c} * ((100% - 3rem) / 7 + 0.5rem))`;
+                                                const colWidth = (n) => `calc(${n} * ((100% - 3rem) / 7) + ${n - 1} * 0.5rem)`;
+
+                                                return weeks.map((week, wi) => {
+                                                    // Clip each event to this week's in-month days.
+                                                    const segments = [];
+                                                    filteredCalEvents.forEach(ce => {
+                                                        const s0 = ce.startDate;
+                                                        const e0 = ce.endDate && ce.endDate >= ce.startDate ? ce.endDate : ce.startDate;
+                                                        if (!s0) return;
+                                                        let first = -1, last = -1;
+                                                        week.forEach((slot, ci) => {
+                                                            if (slot && slot.dateStr >= s0 && slot.dateStr <= e0) {
+                                                                if (first === -1) first = ci;
+                                                                last = ci;
+                                                            }
+                                                        });
+                                                        if (first === -1) return;
+                                                        segments.push({
+                                                            ce,
+                                                            first,
+                                                            span: last - first + 1,
+                                                            continuesBefore: week[first].dateStr > s0,
+                                                            continuesAfter: week[last].dateStr < e0
+                                                        });
+                                                    });
+
+                                                    // Greedy lane packing: earliest start first, longer bars first on ties.
+                                                    segments.sort((a, b) => a.first - b.first || b.span - a.span);
+                                                    const laneEnds = [];
+                                                    segments.forEach(seg => {
+                                                        let lane = laneEnds.findIndex(endCol => endCol < seg.first);
+                                                        if (lane === -1) { lane = laneEnds.length; laneEnds.push(-1); }
+                                                        laneEnds[lane] = seg.first + seg.span - 1;
+                                                        seg.lane = lane;
+                                                    });
+                                                    const laneCount = laneEnds.length;
+
+                                                    return (
+                                                        <div key={wi} className="relative grid grid-cols-7 gap-2">
+                                                            {week.map((slot, ci) => {
+                                                                if (!slot) {
+                                                                    return <div key={`empty-${wi}-${ci}`} className="min-h-[150px] bg-white/30 rounded-xl"></div>;
+                                                                }
+                                                                const { d, dateStr } = slot;
+                                                                const dayEvents = filteredEvents.filter(e => e.date === dateStr);
+                                                                const isToday = todayStr === dateStr;
+
+                                                                return (
+                                                                    <div
+                                                                        key={dateStr}
+                                                                        onClick={() => setDayChooserDate(dateStr)}
+                                                                        className={`min-h-[150px] p-2 rounded-xl border transition flex flex-col cursor-pointer ${
+                                                                            isToday ? 'bg-[#F2E8D9] border-[#C1714F] border-2 shadow-sm' : 'bg-white/90 border-[#E0C9AA] hover:border-[#C1714F]'
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex items-center justify-between mb-1 h-5">
+                                                                            <span className={`text-xs font-extrabold ${isToday ? 'text-[#C1714F]' : 'text-[#3B1F10]'}`}>{d}</span>
+                                                                            {dayEvents.length > 0 && (
+                                                                                <span className="text-2xs bg-[#C1714F] text-white font-bold px-1.5 py-0.5 rounded-full">
+                                                                                    {dayEvents.length}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {/* Room for the event bars drawn over this row */}
+                                                                        {laneCount > 0 && <div style={{ height: laneCount * LANE_H }} className="shrink-0"></div>}
+
+                                                                        <div className="space-y-1 overflow-y-auto max-h-[105px]">
+                                                                            {dayEvents.map(evt => (
+                                                                                <div
+                                                                                    key={evt.id}
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        setEditingEvent(evt);
+                                                                                        setIsModalOpen(true);
+                                                                                    }}
+                                                                                    className="bg-[#E8D4BC] hover:bg-[#C1714F] hover:text-white text-[#3B1F10] p-1.5 rounded text-2xs font-bold leading-tight truncate transition"
+                                                                                    title={`${evt.title} (${evt.assignee || 'Unassigned'})`}
+                                                                                >
+                                                                                    {evt.title}
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+
+                                                            {/* Event bars, spanning across day cells */}
+                                                            {segments.map(seg => {
+                                                                const ce = seg.ce;
+                                                                const showTime = !seg.continuesBefore && ce.startTime;
+                                                                return (
+                                                                    <div
+                                                                        key={`${ce.id}-${wi}`}
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            setEditingEvent(evt);
-                                                                            setIsModalOpen(true);
+                                                                            setEditingCalEvent(ce);
+                                                                            setIsCalEventModalOpen(true);
                                                                         }}
-                                                                        className="bg-[#E8D4BC] hover:bg-[#C1714F] hover:text-white text-[#3B1F10] p-1.5 rounded text-2xs font-bold leading-tight truncate transition"
-                                                                        title={`${evt.title} (${evt.assignee || 'Unassigned'})`}
+                                                                        title={`${ce.title}${ce.location ? ' · ' + ce.location : ''} (${formatDate(ce.startDate)}${ce.endDate && ce.endDate !== ce.startDate ? ' – ' + formatDate(ce.endDate) : ''})`}
+                                                                        className={`absolute z-10 cal-event-bar text-white text-2xs font-bold px-2 flex items-center gap-1 truncate cursor-pointer shadow-sm transition ${
+                                                                            seg.continuesBefore ? 'rounded-l-none' : 'rounded-l-md'
+                                                                        } ${seg.continuesAfter ? 'rounded-r-none' : 'rounded-r-md'}`}
+                                                                        style={{
+                                                                            top: BAR_TOP + seg.lane * LANE_H,
+                                                                            height: LANE_H - 3,
+                                                                            left: `calc(${colLeft(seg.first)} + 4px)`,
+                                                                            width: `calc(${colWidth(seg.span)} - 8px)`
+                                                                        }}
                                                                     >
-                                                                        {evt.title}
+                                                                        {seg.continuesBefore && <i className="fa-solid fa-caret-left text-2xs opacity-80"></i>}
+                                                                        {showTime && <span className="opacity-80 font-semibold">{ce.startTime}</span>}
+                                                                        <span className="truncate">{ce.title}</span>
+                                                                        {seg.continuesAfter && <i className="fa-solid fa-caret-right text-2xs opacity-80 ml-auto"></i>}
                                                                     </div>
-                                                                ))}
-                                                            </div>
+                                                                );
+                                                            })}
                                                         </div>
                                                     );
-                                                }
-                                                return cells;
+                                                });
                                             })()}
                                         </div>
                                     </div>
@@ -2523,6 +2778,109 @@
                             </div>
                         )}
 
+                        {mainTab === 'processes' && (
+                            <div className="space-y-6">
+                                {/* Header */}
+                                <div className="glass-panel p-6 sm:p-8 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                                    <div>
+                                        <h2 className="text-2xl font-extrabold text-[#3B1F10] flex items-center gap-2">
+                                            <i className="fa-solid fa-diagram-project text-[#C1714F]"></i> Processes & SOPs
+                                        </h2>
+                                        <p className="text-xs text-[#5C2A14] font-semibold mt-1">
+                                            How SyeLabs runs: standard operating procedures, onboarding, blog publishing, meetings, and templates
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setEditingProcess({ tags: processCategory === 'All' ? [] : [processCategory] });
+                                            setIsProcessModalOpen(true);
+                                        }}
+                                        className="bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-md shrink-0"
+                                    >
+                                        <i className="fa-solid fa-plus"></i> Add Process
+                                    </button>
+                                </div>
+
+                                {/* Search + category filter */}
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                    <div className="relative sm:w-72">
+                                        <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[#98573b] text-xs"></i>
+                                        <input
+                                            type="text"
+                                            value={processSearch}
+                                            onChange={(e) => setProcessSearch(e.target.value)}
+                                            placeholder="Search processes..."
+                                            className="w-full bg-white border border-[#CFA07E] rounded-xl pl-8 pr-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]"
+                                        />
+                                    </div>
+                                    {processCategories.length > 0 && (
+                                        <select
+                                            value={processCategory}
+                                            onChange={(e) => setProcessCategory(e.target.value)}
+                                            className="bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs font-bold text-[#3B1F10] focus:outline-none"
+                                        >
+                                            <option value="All">All categories</option>
+                                            {processCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                    )}
+                                </div>
+
+                                {/* Process cards */}
+                                {filteredProcesses.length === 0 ? (
+                                    <div className="glass-panel rounded-2xl p-10 text-center">
+                                        <i className="fa-solid fa-folder-open text-3xl text-[#CFA07E] mb-3"></i>
+                                        <p className="text-sm font-bold text-[#3B1F10]">
+                                            {processes.length === 0 ? 'No processes yet' : 'Nothing matches'}
+                                        </p>
+                                        <p className="text-xs text-[#5C2A14] mt-1">
+                                            {processes.length === 0
+                                                ? 'Add your first SOP, onboarding checklist, or blog workflow with "Add Process".'
+                                                : 'Try another category or search term.'}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                        {filteredProcesses.map(proc => (
+                                            <div
+                                                key={proc.id}
+                                                onClick={() => {
+                                                    setEditingProcess(proc);
+                                                    setIsProcessModalOpen(true);
+                                                }}
+                                                className="glass-panel p-5 rounded-2xl flex flex-col justify-between space-y-3 hover:border-[#C1714F] transition cursor-pointer"
+                                            >
+                                                <div>
+                                                    <div className="flex items-start justify-between mb-2 gap-2">
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {processTags(proc).map(t => (
+                                                                <span key={t} className="bg-[#E8D4BC] text-[#3B1F10] text-2xs font-extrabold px-2 py-0.5 rounded border border-[#CFA07E] whitespace-nowrap">
+                                                                    <i className="fa-solid fa-tag mr-1 opacity-60"></i>{t}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                        <span className={`text-2xs font-bold px-2 py-0.5 rounded border shrink-0 ${PROCESS_STATUS_STYLES[proc.status] || PROCESS_STATUS_STYLES.Draft}`}>
+                                                            {proc.status || 'Draft'}
+                                                        </span>
+                                                    </div>
+                                                    <h3 className="font-extrabold text-base text-[#3B1F10] leading-snug">{proc.title}</h3>
+                                                    {proc.summary && (
+                                                        <p className="text-xs text-[#5C2A14] mt-2 leading-relaxed line-clamp-3">{proc.summary}</p>
+                                                    )}
+                                                </div>
+                                                <div className="pt-3 border-t border-[#E0C9AA] flex items-center justify-between text-xs text-[#5C2A14] gap-2">
+                                                    <span className="truncate">Owner: <strong>{proc.owner || 'Unassigned'}</strong></span>
+                                                    <span className="text-2xs font-bold text-[#98573b] whitespace-nowrap">
+                                                        {(proc.steps || []).length > 0 && <><i className="fa-solid fa-list-ol mr-1"></i>{proc.steps.length} steps · </>}
+                                                        {proc.updatedAt ? formatDate(proc.updatedAt.substring(0, 10)) : ''}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {mainTab === 'curriculum' && (
                             <div className="space-y-6">
                                 {/* Curriculum Header & Track Selector */}
@@ -2683,6 +3041,53 @@
                                 setIsModalOpen(false);
                                 setEditingEvent(null);
                             }}
+                        />
+                    )}
+
+                    {/* Process Modal */}
+                    {isProcessModalOpen && (
+                        <ProcessModal
+                            process={editingProcess}
+                            teamOwners={teamOwners}
+                            categories={processCategories}
+                            onAddCategory={handleAddProcessCategory}
+                            onDeleteCategory={handleDeleteProcessCategory}
+                            onSave={handleSaveProcess}
+                            onDelete={handleDeleteProcess}
+                            onClose={() => {
+                                setIsProcessModalOpen(false);
+                                setEditingProcess(null);
+                            }}
+                        />
+                    )}
+
+                    {/* Calendar Event Modal */}
+                    {isCalEventModalOpen && (
+                        <CalendarEventModal
+                            calEvent={editingCalEvent}
+                            onSave={handleSaveCalEvent}
+                            onDelete={handleDeleteCalEvent}
+                            onClose={() => {
+                                setIsCalEventModalOpen(false);
+                                setEditingCalEvent(null);
+                            }}
+                        />
+                    )}
+
+                    {/* Month Grid day click: task or event? */}
+                    {dayChooserDate && (
+                        <DayAddChooser
+                            dateStr={dayChooserDate}
+                            onPickTask={() => {
+                                setEditingEvent({ date: dayChooserDate });
+                                setIsModalOpen(true);
+                                setDayChooserDate(null);
+                            }}
+                            onPickEvent={() => {
+                                openNewCalEvent(dayChooserDate);
+                                setDayChooserDate(null);
+                            }}
+                            onClose={() => setDayChooserDate(null)}
                         />
                     )}
 
@@ -3293,6 +3698,393 @@
                                         className="bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-5 py-2 rounded-xl transition shadow-md"
                                     >
                                         Save Milestone
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        // Opens in read mode for an existing process (most visits are someone
+        // following the steps), and straight into edit mode for a new one.
+        function ProcessModal({ process, teamOwners, categories, onAddCategory, onDeleteCategory, onSave, onDelete, onClose }) {
+            useEscapeToClose(onClose);
+            const isNew = !process?.id;
+            const [editing, setEditing] = useState(isNew);
+            const [title, setTitle] = useState(process?.title || '');
+            const [tags, setTags] = useState(process ? processTags(process) : []);
+            const [newTag, setNewTag] = useState('');
+
+            const toggleTag = (t) => setTags(tags.includes(t) ? tags.filter(x => x !== t) : [...tags, t]);
+            const createTag = () => {
+                const name = newTag.trim();
+                if (!name) return;
+                onAddCategory(name);
+                if (!tags.includes(name)) setTags([...tags, name]);
+                setNewTag('');
+            };
+            // Categories this process is tagged with but that were deleted elsewhere
+            // still show, so they can be un-ticked.
+            const allTagOptions = [...categories, ...tags.filter(t => !categories.includes(t))];
+            const [status, setStatus] = useState(process?.status || 'Draft');
+            const [owner, setOwner] = useState(process?.owner || '');
+            const [summary, setSummary] = useState(process?.summary || '');
+            const [stepsText, setStepsText] = useState((process?.steps || []).join('\n'));
+            const [link, setLink] = useState(process?.link || '');
+            const [notes, setNotes] = useState(process?.notes || '');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!title.trim()) return;
+                // All strings / string arrays - Firestore rejects undefined.
+                onSave({
+                    title: title.trim(),
+                    tags,
+                    status,
+                    owner,
+                    summary,
+                    steps: stepsText.split('\n').map(l => l.replace(/^\s*(\d+[.)]|[-*•])\s*/, '').trim()).filter(Boolean),
+                    link: link.trim(),
+                    notes
+                });
+            };
+
+            const inputCls = "w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#C1714F]";
+            const href = safeHref(process?.link);
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#3B1F10]/50 backdrop-blur-sm">
+                    <div className="bg-[#F7F1E8] border border-[#C1714F]/40 w-full max-w-2xl rounded-2xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto text-[#3B1F10]">
+                        <button onClick={onClose} className="absolute top-4 right-4 text-[#5C2A14] hover:text-[#3B1F10]">
+                            <i className="fa-solid fa-xmark text-lg"></i>
+                        </button>
+
+                        {!editing ? (
+                            <div className="space-y-5">
+                                <div className="pr-8">
+                                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                        {processTags(process).map(t => (
+                                            <span key={t} className="bg-[#E8D4BC] text-[#3B1F10] text-2xs font-extrabold px-2 py-0.5 rounded border border-[#CFA07E]">
+                                                <i className="fa-solid fa-tag mr-1 opacity-60"></i>{t}
+                                            </span>
+                                        ))}
+                                        <span className={`text-2xs font-bold px-2 py-0.5 rounded border ${PROCESS_STATUS_STYLES[process.status] || PROCESS_STATUS_STYLES.Draft}`}>
+                                            {process.status || 'Draft'}
+                                        </span>
+                                    </div>
+                                    <h3 className="font-extrabold text-xl text-[#3B1F10]">{process.title}</h3>
+                                    <p className="text-2xs text-[#98573b] font-semibold mt-1">
+                                        Owner: {process.owner || 'Unassigned'}
+                                        {process.updatedAt && <> · Last updated {formatDate(process.updatedAt.substring(0, 10))}</>}
+                                    </p>
+                                </div>
+
+                                {process.summary && (
+                                    <p className="text-sm text-[#5C2A14] leading-relaxed whitespace-pre-wrap">{process.summary}</p>
+                                )}
+
+                                {(process.steps || []).length > 0 && (
+                                    <div>
+                                        <h4 className="text-xs font-extrabold text-[#5C2A14] uppercase tracking-wider mb-2">Steps</h4>
+                                        <ol className="space-y-2">
+                                            {process.steps.map((step, i) => (
+                                                <li key={i} className="flex items-start gap-3 bg-white/90 border border-[#E0C9AA] rounded-xl p-3">
+                                                    <span className="w-6 h-6 shrink-0 rounded-full bg-[#C1714F] text-white text-2xs font-extrabold flex items-center justify-center">{i + 1}</span>
+                                                    <span className="text-xs text-[#3B1F10] leading-relaxed pt-0.5">{step}</span>
+                                                </li>
+                                            ))}
+                                        </ol>
+                                    </div>
+                                )}
+
+                                {process.notes && (
+                                    <div className="bg-[#F2E8D9] border border-[#E0C9AA] p-3 rounded-xl">
+                                        <h4 className="text-xs font-extrabold text-[#5C2A14] mb-1">Notes</h4>
+                                        <p className="text-xs text-[#3B1F10] leading-relaxed whitespace-pre-wrap">{process.notes}</p>
+                                    </div>
+                                )}
+
+                                {href && (
+                                    <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs font-bold text-[#C1714F] hover:text-[#A85A38]">
+                                        <i className="fa-solid fa-arrow-up-right-from-square"></i> Open full document
+                                    </a>
+                                )}
+
+                                <div className="flex items-center justify-end gap-2 pt-4 border-t border-[#E0C9AA]">
+                                    <button type="button" onClick={onClose} className="bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] text-xs font-bold px-4 py-2 rounded-xl transition border border-[#CFA07E]">
+                                        Close
+                                    </button>
+                                    <button type="button" onClick={() => setEditing(true)} className="bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-5 py-2 rounded-xl transition shadow-md flex items-center gap-2">
+                                        <i className="fa-solid fa-pen-to-square"></i> Edit
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <h3 className="font-extrabold text-lg text-[#3B1F10] mb-4 flex items-center gap-2">
+                                    <i className="fa-solid fa-diagram-project text-[#C1714F]"></i>
+                                    {isNew ? 'Add Process' : 'Edit Process'}
+                                </h3>
+
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-[#5C2A14] mb-1">Title *</label>
+                                        <input type="text" required autoFocus value={title} onChange={(e) => setTitle(e.target.value)}
+                                            placeholder="e.g. New Volunteer Onboarding" className={inputCls + " text-sm"} />
+                                    </div>
+
+                                    <div className="bg-white/80 border border-[#CFA07E] rounded-xl p-3 space-y-2">
+                                        <label className="block text-xs font-bold text-[#5C2A14] flex items-center justify-between">
+                                            <span>Categories</span>
+                                            <span className="text-2xs text-[#98573b]">Click to tag · × deletes the category for everyone</span>
+                                        </label>
+                                        {allTagOptions.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {allTagOptions.map(t => {
+                                                    const on = tags.includes(t);
+                                                    return (
+                                                        <span key={t} className={`rounded-lg text-xs font-bold flex items-center border transition ${
+                                                            on ? 'bg-[#C1714F] text-white border-[#A85A38]' : 'bg-[#E8D4BC] text-[#3B1F10] border-[#CFA07E] hover:bg-[#E0C9AA]'
+                                                        }`}>
+                                                            <button type="button" onClick={() => toggleTag(t)} className="pl-2.5 pr-1 py-1 flex items-center gap-1">
+                                                                <i className={`fa-solid ${on ? 'fa-check' : 'fa-plus'} text-2xs`}></i>{t}
+                                                            </button>
+                                                            {categories.includes(t) && (
+                                                                <button type="button" onClick={() => onDeleteCategory(t)} title={`Delete category "${t}"`} className="pr-2 pl-1 py-1 opacity-50 hover:opacity-100">
+                                                                    <i className="fa-solid fa-xmark text-2xs"></i>
+                                                                </button>
+                                                            )}
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <p className="text-2xs text-[#5C2A14]">No categories yet. Create one below, e.g. SOP, Onboarding, Blog Posts.</p>
+                                        )}
+                                        <div className="flex items-center gap-2 pt-1 border-t border-[#E0C9AA]">
+                                            <input
+                                                type="text"
+                                                value={newTag}
+                                                onChange={(e) => setNewTag(e.target.value)}
+                                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); createTag(); } }}
+                                                placeholder="New category name..."
+                                                className="flex-1 bg-white border border-[#CFA07E] rounded-lg px-2.5 py-1 text-xs text-[#3B1F10] focus:outline-none"
+                                            />
+                                            <button type="button" onClick={createTag} className="bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] text-xs font-bold px-3 py-1 rounded-lg border border-[#CFA07E]">
+                                                + Add Category
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-[#5C2A14] mb-1">Status</label>
+                                            <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputCls}>
+                                                <option value="Draft">Draft</option>
+                                                <option value="Active">Active</option>
+                                                <option value="Archived">Archived</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-[#5C2A14] mb-1">Owner</label>
+                                            <input type="text" list="process-owner-list" value={owner} onChange={(e) => setOwner(e.target.value)}
+                                                placeholder="Who maintains it" className={inputCls} />
+                                            <datalist id="process-owner-list">
+                                                {teamOwners.map(o => <option key={o} value={o} />)}
+                                            </datalist>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-[#5C2A14] mb-1">Purpose / Summary</label>
+                                        <textarea rows="2" value={summary} onChange={(e) => setSummary(e.target.value)}
+                                            placeholder="What this process is for and when to use it" className={inputCls}></textarea>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-[#5C2A14] mb-1">
+                                            Steps <span className="text-2xs text-[#98573b] font-semibold">· one per line, numbered automatically</span>
+                                        </label>
+                                        <textarea rows="7" value={stepsText} onChange={(e) => setStepsText(e.target.value)}
+                                            placeholder={"Send welcome email with the volunteer handbook\nAdd to Slack and shared Drive\nSchedule a 30-min intro call"}
+                                            className={inputCls + " font-mono leading-relaxed"}></textarea>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-[#5C2A14] mb-1">Link to full doc</label>
+                                        <input type="url" value={link} onChange={(e) => setLink(e.target.value)}
+                                            placeholder="https://docs.google.com/..." className={inputCls} />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-[#5C2A14] mb-1">Notes</label>
+                                        <textarea rows="3" value={notes} onChange={(e) => setNotes(e.target.value)}
+                                            placeholder="Tips, tools, contacts, gotchas..." className={inputCls}></textarea>
+                                    </div>
+
+                                    <div className="flex items-center justify-between pt-4 border-t border-[#E0C9AA]">
+                                        {!isNew ? (
+                                            <ConfirmDeleteButton onConfirm={() => onDelete(process.id)} />
+                                        ) : (
+                                            <div></div>
+                                        )}
+                                        <div className="flex items-center space-x-2">
+                                            <button type="button" onClick={isNew ? onClose : () => setEditing(false)}
+                                                className="bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] text-xs font-bold px-4 py-2 rounded-xl transition border border-[#CFA07E]">
+                                                Cancel
+                                            </button>
+                                            <button type="submit" className="bg-[#C1714F] hover:bg-[#A85A38] text-white text-xs font-bold px-5 py-2 rounded-xl transition shadow-md">
+                                                Save Process
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Shown when a Month Grid day is clicked: add a task or an event there.
+        function DayAddChooser({ dateStr, onPickTask, onPickEvent, onClose }) {
+            useEscapeToClose(onClose);
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#3B1F10]/40 backdrop-blur-sm" onClick={onClose}>
+                    <div className="bg-[#F7F1E8] border border-[#C1714F]/40 w-full max-w-xs rounded-2xl p-5 shadow-2xl text-[#3B1F10]" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="font-extrabold text-sm mb-4">Add to {formatDate(dateStr)}</h3>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                onClick={onPickTask}
+                                className="bg-[#E8D4BC] hover:bg-[#C1714F] hover:text-white text-[#3B1F10] text-xs font-bold px-3 py-3 rounded-xl border border-[#CFA07E] transition flex flex-col items-center gap-1"
+                            >
+                                <i className="fa-solid fa-list-check text-base"></i> Task
+                            </button>
+                            <button
+                                onClick={onPickEvent}
+                                className="cal-event-bar text-white text-xs font-bold px-3 py-3 rounded-xl transition flex flex-col items-center gap-1"
+                            >
+                                <i className="fa-solid fa-calendar-day text-base"></i> Event
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function CalendarEventModal({ calEvent, onSave, onDelete, onClose }) {
+            useEscapeToClose(onClose);
+            const [title, setTitle] = useState(calEvent?.title || '');
+            const [startDate, setStartDate] = useState(calEvent?.startDate || toLocalISODate());
+            const [endDate, setEndDate] = useState(calEvent?.endDate || calEvent?.startDate || toLocalISODate());
+            const [allDay, setAllDay] = useState(calEvent?.id ? !calEvent.startTime : true);
+            const [startTime, setStartTime] = useState(calEvent?.startTime || '09:00');
+            const [endTime, setEndTime] = useState(calEvent?.endTime || '10:00');
+            const [location, setLocation] = useState(calEvent?.location || '');
+            const [description, setDescription] = useState(calEvent?.description || '');
+
+            // Keep the range valid: moving the start past the end drags the end along.
+            const changeStart = (v) => {
+                setStartDate(v);
+                if (!endDate || endDate < v) setEndDate(v);
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!title.trim() || !startDate) return;
+                // Every field is a string - Firestore rejects undefined values.
+                onSave({
+                    title: title.trim(),
+                    startDate,
+                    endDate: endDate && endDate >= startDate ? endDate : startDate,
+                    startTime: allDay ? '' : (startTime || ''),
+                    endTime: allDay ? '' : (endTime || ''),
+                    location,
+                    description
+                });
+            };
+
+            const inputCls = "w-full bg-white border border-[#CFA07E] rounded-xl px-3 py-2 text-xs text-[#3B1F10] focus:outline-none focus:border-[#2F6F73]";
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#3B1F10]/50 backdrop-blur-sm">
+                    <div className="bg-[#F7F1E8] border border-[#2F6F73]/40 w-full max-w-lg rounded-2xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto text-[#3B1F10]">
+                        <button onClick={onClose} className="absolute top-4 right-4 text-[#5C2A14] hover:text-[#3B1F10]">
+                            <i className="fa-solid fa-xmark text-lg"></i>
+                        </button>
+
+                        <h3 className="font-extrabold text-lg text-[#3B1F10] mb-4 flex items-center gap-2">
+                            <i className="fa-solid fa-calendar-day text-[#2F6F73]"></i>
+                            {calEvent?.id ? 'Edit Event' : 'Add Event'}
+                        </h3>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-[#5C2A14] mb-1">Event Title *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    autoFocus
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    placeholder="e.g. Grace Hopper Conference"
+                                    className={inputCls + " text-sm"}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-[#5C2A14] mb-1">Start Date *</label>
+                                    <input type="date" required value={startDate} onChange={(e) => changeStart(e.target.value)} className={inputCls + " cursor-pointer"} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-[#5C2A14] mb-1">End Date *</label>
+                                    <input type="date" required min={startDate} value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputCls + " cursor-pointer"} />
+                                </div>
+                            </div>
+
+                            <label className="flex items-center gap-2 text-xs font-bold text-[#5C2A14] cursor-pointer select-none">
+                                <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} className="accent-[#2F6F73]" />
+                                All day
+                            </label>
+
+                            {!allDay && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-[#5C2A14] mb-1">Start Time</label>
+                                        <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-[#5C2A14] mb-1">End Time</label>
+                                        <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inputCls} />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-xs font-bold text-[#5C2A14] mb-1">Location</label>
+                                <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Orlando, FL or Zoom link" className={inputCls} />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-[#5C2A14] mb-1">Notes</label>
+                                <textarea rows="3" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Agenda, who's attending, links..." className={inputCls}></textarea>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-4 border-t border-[#E0C9AA]">
+                                {calEvent?.id ? (
+                                    <ConfirmDeleteButton onConfirm={() => onDelete(calEvent.id)} />
+                                ) : (
+                                    <div></div>
+                                )}
+                                <div className="flex items-center space-x-2">
+                                    <button type="button" onClick={onClose} className="bg-[#E8D4BC] hover:bg-[#E0C9AA] text-[#3B1F10] text-xs font-bold px-4 py-2 rounded-xl transition border border-[#CFA07E]">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="cal-event-bar text-white text-xs font-bold px-5 py-2 rounded-xl transition shadow-md">
+                                        Save Event
                                     </button>
                                 </div>
                             </div>
